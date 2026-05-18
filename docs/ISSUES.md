@@ -79,9 +79,16 @@
 
 | # | 状态 | 问题 | 严重度 | 推进建议 |
 |---|------|------|--------|----------|
-| ISS-041 | 🔴 | `createUpdaterArtifacts` 为 false，构建时不生成 `.tar.gz` + `.sig` 签名产物 | 高 | `L1 subagent` |
-| ISS-042 | 🔴 | Updater endpoint URL 格式错误（`{{target}}-{{arch}}.json`），应改为统一的 `latest.json` | 高 | `L1 subagent` |
-| ISS-043 | 🔴 | 缺少 GitHub Actions 发布工作流：tag 触发 → 构建 → 签名 → 生成 `latest.json` → 创建 Release | 高 | `L2 worktree` |
+| ISS-042 | 🔴 | `createUpdaterArtifacts` 为 false，构建时不生成 `.tar.gz` + `.sig` 签名产物 | 高 | `L1 subagent` |
+| ISS-043 | 🔴 | Updater endpoint URL 格式错误（`{{target}}-{{arch}}.json`），应改为统一的 `latest.json` | 高 | `L1 subagent` |
+| ISS-044 | 🔴 | 缺少 GitHub Actions 发布工作流：tag 触发 → 构建 → 签名 → 生成 `latest.json` → 创建 Release | 高 | `L2 worktree` |
+
+### 安全与构建
+
+| # | 状态 | 问题 | 严重度 | 推进建议 |
+|---|------|------|--------|----------|
+| ISS-045 | 🔴 | `.gitignore` 未排除 `*.key` 签名密钥文件，若后续密钥复制到项目目录可能意外提交 | 中 | `L1 subagent` |
+| ISS-046 | 🔴 | bundle identifier `com.folia.app` 以 `.app` 结尾，Tauri 构建警告与 macOS bundle 扩展名冲突，建议改为 `com.folia.reader` | 低 | `L1 subagent` |
 
 ## 已修复 / 已归档
 
