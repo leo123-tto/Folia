@@ -90,6 +90,12 @@
 | ISS-045 | 🔴 | `.gitignore` 未排除 `*.key` 签名密钥文件，若后续密钥复制到项目目录可能意外提交 | 中 | `L1 subagent` |
 | ISS-046 | 🔴 | bundle identifier `com.folia.app` 以 `.app` 结尾，Tauri 构建警告与 macOS bundle 扩展名冲突，建议改为 `com.folia.reader` | 低 | `L1 subagent` |
 
+### 文档与资源
+
+| # | 状态 | 问题 | 严重度 | 推进建议 |
+|---|------|------|--------|----------|
+| ISS-047 | 🔴 | `README.md` 中引用的 `docs/icon.png` 图标未添加圆角，GitHub 上显示为直角方形，缺少 macOS 应用图标的视觉辨识度 | 低 | `L1 subagent` |
+
 ## 已修复 / 已归档
 
 ### 2026-05-18 v0.3.6 Word 预览与导出预设修正
