@@ -52,4 +52,4 @@ npm run updater:manifest
 
 ## 许可
 
-MIT
+Apache License 2.0
