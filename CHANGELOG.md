@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.7] - 2026-05-19
+
+### Changed
+
+- Updater 构建配置 `createUpdaterArtifacts` 改为 `true`，构建时生成签名产物。
+- Updater endpoint URL 从 `{{target}}-{{arch}}.json` 改为统一的 `latest.json`。
+- Bundle identifier 从 `com.folia.app` 改为 `com.folia.reader`，避免 macOS `.app` 扩展名冲突。
+
+### Fixed
+
+- `.gitignore` 添加 `*.key` 排除规则，防止签名密钥意外提交。
+- `docs/icon.png` 添加 macOS 标准圆角，GitHub 上显示更自然。
+
 ## [0.3.6] - 2026-05-18
 
 ### Added

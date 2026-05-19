@@ -78,24 +78,20 @@
 
 | # | 状态 | 问题 | 严重度 | 推进建议 |
 |---|------|------|--------|----------|
-| ISS-042 | 🔴 | `createUpdaterArtifacts` 为 false，构建时不生成 `.tar.gz` + `.sig` 签名产物 | 高 | `L1 subagent` |
-| ISS-043 | 🔴 | Updater endpoint URL 格式错误（`{{target}}-{{arch}}.json`），应改为统一的 `latest.json` | 高 | `L1 subagent` |
 | ISS-044 | 🔴 | 缺少 GitHub Actions 发布工作流：tag 触发 → 构建 → 签名 → 生成 `latest.json` → 创建 Release | 高 | `L2 worktree` |
-
-### 安全与构建
-
-| # | 状态 | 问题 | 严重度 | 推进建议 |
-|---|------|------|--------|----------|
-| ISS-045 | 🔴 | `.gitignore` 未排除 `*.key` 签名密钥文件，若后续密钥复制到项目目录可能意外提交 | 中 | `L1 subagent` |
-| ISS-046 | 🔴 | bundle identifier `com.folia.app` 以 `.app` 结尾，Tauri 构建警告与 macOS bundle 扩展名冲突，建议改为 `com.folia.reader` | 低 | `L1 subagent` |
-
-### 文档与资源
-
-| # | 状态 | 问题 | 严重度 | 推进建议 |
-|---|------|------|--------|----------|
-| ISS-047 | 🔴 | `README.md` 中引用的 `docs/icon.png` 图标未添加圆角，GitHub 上显示为直角方形，缺少 macOS 应用图标的视觉辨识度 | 低 | `L1 subagent` |
+| ISS-048 | 🔴 | 国内用户无法稳定访问 GitHub Releases 自动更新；需注册 Gitee 镜像仓库，在 `endpoints` 中添加备用更新源，并在 CI 中自动同步 Release artifact 到 Gitee | 中 | `L2 worktree` |
 
 ## 已修复 / 已归档
+
+### 2026-05-19 自动更新配置与构建安全
+
+| # | 状态 | 问题 | 严重度 | 推进建议 |
+|---|------|------|--------|----------|
+| ISS-042 | 🟢 | `createUpdaterArtifacts` 改为 `true`，构建时生成 `.tar.gz` + `.sig` 签名产物 | 高 | 已完成 |
+| ISS-043 | 🟢 | Updater endpoint URL 改为统一的 `latest.json` | 高 | 已完成 |
+| ISS-045 | 🟢 | `.gitignore` 添加 `*.key` 排除签名密钥文件 | 中 | 已完成 |
+| ISS-046 | 🟢 | bundle identifier 改为 `com.folia.reader`，避免 macOS `.app` 扩展名冲突 | 低 | 已完成 |
+| ISS-047 | 🟢 | `docs/icon.png` 添加 macOS 标准圆角（229px radius），GitHub 显示更自然 | 低 | 已完成 |
 
 ### 2026-05-18 v0.3.6 Word 预览与导出预设修正
 

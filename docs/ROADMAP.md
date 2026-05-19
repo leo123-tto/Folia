@@ -1,11 +1,11 @@
 # Folia 路线图
 
-> Last updated: 2026-05-16
+> Last updated: 2026-05-18
 > 本文档是 Folia 项目的整体路线图和动态任务清单。
 
 ## 项目愿景
 
-一个轻量、精致的 Markdown 阅读器，稳定渲染复杂 HTML 表格，专为法律文档阅读和维护设计。
+一个轻量、精致的 Markdown 阅读与写作器，稳定处理复杂 HTML 表格，并能将 Markdown 内容可靠导出为法律文书风格的 Word 文件。
 
 ## 当前进展概览
 
@@ -19,10 +19,12 @@
 | :--- | :--- | :--- | :--- |
 | v0.1 MVP | 基础分屏阅读编辑 | 🟢 已完成 | CodeMirror + markdown-it |
 | v0.2 渲染引擎 | Vditor 替换 markdown-it | 🟢 已完成 | Vditor.preview() + 本地 CDN |
-| v0.3 编辑体验 | 所见即所得编辑 | ⚪ 未开始 | 待定方案 |
+| v0.3 编辑体验 | Typora-like 所见即所得 + HTML 阅读优先 + Word 纸张预览 | 🟡 进行中 | 普通 Markdown 默认 WYSIWYG；原生 HTML 表格自动稳定预览；源码 fallback、按需 Word 多页预览面板已完成 |
 | v0.4 文档管理 | 最近文件、多文件 | ⚪ 未开始 | |
-| v0.5 法律增强 | 表格编辑、模板 | ⚪ 未开始 | |
+| v0.5 桌面发布体验 | 自动更新、发布产物、版本提示 | 🟢 已完成 | Tauri updater + GitHub Releases |
 | v0.6 Word 导出与预览 | md2word 集成、docx 导出 + 预览 | 🟢 已完成 | 纯 TS 方案，docx npm + mammoth |
+| v0.7 法律增强 | 表格编辑、模板 | ⚪ 未开始 | |
+| v0.8 预设生态 | 自定义预设槽位、组织共享、商业化探索 | ⚪ 未开始 | 付费解锁额外槽位，不影响核心阅读与基础导出能力 |
 
 ## 任务详情
 
@@ -50,12 +52,33 @@
 - [x] 清理测试代码（删除 VditorTest.tsx，恢复 App.tsx）
 - [x] 验证：标题、列表、代码高亮、表格、大纲均正常
 
-### v0.3 编辑体验
+### v0.3 编辑体验与 Word 预览重构
 
-- [ ] 调研所见即所得编辑方案（Vditor 编辑器 / Milkdown / 其他）
-- [ ] 实现 Markdown 源码 ↔ 可视化编辑双向同步
-- [ ] 保留源码编辑模式作为 fallback
-- [ ] 验证 HTML table 在编辑器中的表现
+- [x] 明确产品形态：普通 Markdown 默认进入 Typora-like 所见即所得编辑；原生 HTML 表格文档自动进入稳定阅读预览；右侧按需显示 Word 导出纸张预览
+- [x] 明确约束：源码 Markdown 仍作为唯一可信数据源；源码编辑模式保留为复杂 HTML 表格和排障 fallback
+- [x] 调研并确定轻量 WYSIWYG 实现方案：第一版使用现有 Vditor WYSIWYG，不新增 Milkdown/ProseMirror
+- [x] 实现所见即所得编辑器外壳：默认显示 WYSIWYG，源码模式通过工具栏 fallback，Markdown 源码仍为可信数据源
+- [x] 将右侧普通 Markdown 预览替换为按需 Word 纸张预览：点击工具栏按钮后显示右侧可拖拽 A4 面板
+- [x] 复用 `md2word` 项目沉淀的规则：A4 21cm × 29.7cm、2.54/3.18cm 页边距、图片 92% 版心宽且最大 14.2cm、复杂 HTML table rowspan/colspan 处理策略
+- [x] Word 预览按需/延迟加载：默认不显示、不加载；编辑输入使用 debounce 更新，避免拖慢启动和输入
+- [x] 完善桌面壳体验：标题栏空白可拖动（原生 drag-region + 手动 `startDragging()` fallback）、拖拽文件到窗口可打开、主界面不显示应用名、默认窗口更小
+- [x] Word 预览按真实 A4 页面整体缩放，避免把页面压缩成右侧面板宽度导致版式失真
+- [x] Word 预览改为多页 A4 纸张栈，显示页码标签，右侧拖拽只改变缩放比例不改变页面版式
+- [x] 将“导出 Word”从一级工具栏移入 Word 预览面板，并在面板内提供当前导出预设选择器
+- [x] 支持导入自定义 JSON 导出预设：内置预设继续保留，用户新增预设通过 JSON 模板导入，不在应用内暴露复杂调参表单
+- [x] 参考 Funes 接入自动更新：启动后延迟检查、Settings / 关于手动检查、发现更新后安装并重启
+- [x] 验证复杂 HTML table 默认走稳定阅读预览，不被 WYSIWYG 压窄或破坏结构；Word 纸张预览继续不横向撑破纸张
+- [x] 放大 TOC 大纲默认宽度、标题字号、条目字号和行距，改善长文档导航可读性
+- [ ] 继续提升 WYSIWYG 编辑细节：快捷格式化、表格编辑工具、复杂 HTML 块的编辑提示
+
+### v0.5 桌面发布体验（已完成）
+
+- [x] 接入 `@tauri-apps/plugin-updater` 和 `tauri-plugin-updater`
+- [x] 接入 `@tauri-apps/plugin-process`，更新安装后自动 relaunch
+- [x] Settings 增加“关于”页面：版本、自动检查开关、手动检查更新
+- [x] 启动自动检查延迟执行，不阻塞冷启动
+- [x] 生成并配置 updater 公钥，私钥保存在 `~/.tauri/folia.key`
+- [x] 新增发布脚本：签名 updater artifact 与生成 `darwin-aarch64.json` manifest
 
 ### v0.4 文档管理
 
@@ -78,7 +101,7 @@
 
 #### 阶段二：导出 UI
 
-- [x] Toolbar 添加"导出 Word"按钮
+- [x] 创建"导出 Word"入口（v0.3.6 起移动到 Word 预览面板内）
 - [x] 创建 `src/services/wordExportService.ts` — 导出服务函数
 - [x] AppLayout 添加 `Cmd+Shift+E` 快捷键 + 导出回调
 - [x] Tauri 添加 `fs:allow-write-file` 二进制写入权限
@@ -97,8 +120,9 @@
 
 - [x] 创建 `src/services/settingsService.ts` — localStorage 持久化默认导出预设
 - [x] Settings 页面添加"导出"部分（预设选择器）
+- [x] Settings / 导出支持导入自定义 JSON 预设、复制模板和删除自定义预设
 
-### v0.5 法律增强
+### v0.7 法律增强
 
 - [ ] 表格列隐藏规则可配置（data-hide-last-column 属性）
 - [ ] 证据目录模板
@@ -106,7 +130,29 @@
 - [ ] 时间线模板
 - [ ] 导出为独立 HTML
 
+### v0.8 预设生态与商业化探索
+
+- [ ] 明确免费/付费边界：复杂 HTML 阅读、基础 Word 导出、内置预设和少量自定义 JSON 预设槽位保持可用
+- [ ] 设计“预设槽位”模型：免费用户可保存有限数量的自定义 Word 导出预设，付费解锁更多/不限量槽位
+- [ ] 设计槽位占用规则：导入 JSON 即占用一个自定义槽位；删除自定义预设释放槽位；内置预设不计入槽位
+- [ ] 探索本地授权/许可证校验策略，优先保证离线可用和启动速度，不引入会阻塞打开文档的联网校验
+- [ ] 评估组织级预设共享：律所/团队统一维护导出规范，成员导入后保持一致输出，可能需要独立的团队槽位策略
+
 ## 进度日志
+
+- **2026-05-18**
+  - 记录未来预设生态方向：基础能力保持可用，商业化优先围绕“自定义 Word 导出预设槽位”展开，付费解锁额外槽位而不是限制阅读和基础导出。
+  - Word 预览升级为多页 A4 纸张栈，显示页码标签；导出按钮和预设选择移入 Word 预览面板；Settings / 导出支持 JSON 自定义预设导入。
+  - 修复源码模式长文档无法滚动：CodeMirror wrapper 现在被主内容区高度约束，内部 `.cm-scroller` 负责滚动，并新增 E2E 回归测试。
+  - 修复默认 WYSIWYG 与复杂 HTML 表格阅读冲突：检测到原生 `<table>` 或 `.html` 文件时自动使用 `Vditor.preview()` 稳定阅读预览，源码模式保留编辑能力；同时放大大纲栏默认宽度和字号。
+  - 修复 overlay 顶部栏拖动不稳定：Toolbar 空白区域保留 `data-tauri-drag-region`，并增加手动 `startDragging()` fallback；双击空白区域触发窗口最大化切换。
+  - 参考 Funes 接入自动更新能力：新增 Tauri updater / process 插件、启动后延迟自动检查、Settings / 关于手动检查、安装进度对话框和 GitHub Release manifest 生成脚本。
+  - 修正 v0.3 桌面体验细节：Toolbar 去掉应用名、增加稳定拖动区域、文件拖入窗口改用 Tauri 原生拖放事件；默认窗口缩小为 `980×680`。
+  - Word 预览从“压缩进面板”改为真实 A4 页面整体缩放，并补充标题、正文、表格、图片等导出预设样式映射。
+
+- **2026-05-17**
+  - v0.3 第一阶段落地：默认进入 Vditor WYSIWYG 编辑，源码模式通过工具栏切换；Word 纸张预览改为点击后打开的右侧面板，并保持复杂 HTML 表格渲染能力。
+  - 确定 v0.3 产品方向：默认 Typora-like 所见即所得编辑，右侧预览改为 Word 导出纸张预览；源码模式保留为复杂 HTML 表格 fallback。参照 `md2word` 的 Word 版式规则，但不引入 Python sidecar 作为默认链路，以保持 Folia 的轻量启动目标。
 
 - **2026-05-16**
   - v0.6 后续优化完成：图片嵌入导出（PR #4）+ Settings 预设选择器（PR #3）。全部 v0.6 任务已完成。
