@@ -1,4 +1,13 @@
-import type { PresetId } from './word';
+import {
+  DEFAULT_PRESET_ID,
+  getPreset,
+  hasPreset,
+  isCustomPresetId,
+  type CustomPresetId,
+  type CustomPresetRegistry,
+  type PresetConfig,
+  type PresetId,
+} from './word';
 
 const STORAGE_KEY = 'folia-settings';
 const LEGACY_KEY = 'folia-export-settings';
@@ -14,10 +23,12 @@ export type PreviewWidth = 640 | 680 | 720 | 800;
 export interface AppSettings {
   // 通用
   autoSave: boolean;
+  autoUpdateCheck: boolean;
   defaultEncoding: DefaultEncoding;
   reopenLastFile: boolean;
   // 导出
   exportPresetId: PresetId;
+  customExportPresets: CustomPresetRegistry;
   // 编辑器
   editorFontFamily: EditorFontFamily;
   editorFontSize: number;
@@ -37,9 +48,11 @@ export interface AppSettings {
 
 const defaults: AppSettings = {
   autoSave: false,
+  autoUpdateCheck: true,
   defaultEncoding: 'UTF-8',
   reopenLastFile: true,
   exportPresetId: 'legal',
+  customExportPresets: {} as CustomPresetRegistry,
   editorFontFamily: 'IBM Plex Mono',
   editorFontSize: 13,
   editorTabSize: 4,
@@ -59,6 +72,20 @@ function readStoredSettings(): Partial<AppSettings> {
   if (!raw) return {};
   const parsed = JSON.parse(raw);
   return parsed && typeof parsed === 'object' ? parsed : {};
+}
+
+function normalizeCustomExportPresets(value: unknown): CustomPresetRegistry {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {} as CustomPresetRegistry;
+  }
+
+  const result: Partial<CustomPresetRegistry> = {};
+  for (const [id, config] of Object.entries(value)) {
+    if (isCustomPresetId(id) && config && typeof config === 'object' && !Array.isArray(config)) {
+      result[id as CustomPresetId] = config as PresetConfig;
+    }
+  }
+  return result as CustomPresetRegistry;
 }
 
 function migrateLegacySettings(stored: Partial<AppSettings>): Partial<AppSettings> {
@@ -85,7 +112,18 @@ function emitSettingsChanged(settings: AppSettings): void {
 
 export function getSettings(): AppSettings {
   try {
-    return { ...defaults, ...migrateLegacySettings(readStoredSettings()) };
+    const stored = migrateLegacySettings(readStoredSettings());
+    const customExportPresets = normalizeCustomExportPresets(stored.customExportPresets);
+    const exportPresetId = stored.exportPresetId && hasPreset(stored.exportPresetId, customExportPresets)
+      ? stored.exportPresetId
+      : DEFAULT_PRESET_ID;
+
+    return {
+      ...defaults,
+      ...stored,
+      exportPresetId,
+      customExportPresets,
+    };
   } catch {
     return { ...defaults };
   }
@@ -93,7 +131,14 @@ export function getSettings(): AppSettings {
 
 export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   const current = getSettings();
-  const merged = { ...current, ...patch };
+  const customExportPresets = normalizeCustomExportPresets(patch.customExportPresets ?? current.customExportPresets);
+  const requestedPresetId = patch.exportPresetId ?? current.exportPresetId;
+  const merged = {
+    ...current,
+    ...patch,
+    customExportPresets,
+    exportPresetId: hasPreset(requestedPresetId, customExportPresets) ? requestedPresetId : DEFAULT_PRESET_ID,
+  };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   emitSettingsChanged(merged);
   return merged;
@@ -127,4 +172,30 @@ export function getExportPreset(): PresetId {
 
 export function setExportPreset(id: PresetId): void {
   updateSettings({ exportPresetId: id });
+}
+
+export function getExportPresetConfig(): PresetConfig {
+  const settings = getSettings();
+  return getPreset(settings.exportPresetId, settings.customExportPresets);
+}
+
+export function addCustomExportPreset(id: CustomPresetId, config: PresetConfig): AppSettings {
+  const settings = getSettings();
+  return updateSettings({
+    customExportPresets: {
+      ...settings.customExportPresets,
+      [id]: config,
+    },
+    exportPresetId: id,
+  });
+}
+
+export function removeCustomExportPreset(id: CustomPresetId): AppSettings {
+  const settings = getSettings();
+  const next = { ...settings.customExportPresets };
+  delete next[id];
+  return updateSettings({
+    customExportPresets: next,
+    exportPresetId: settings.exportPresetId === id ? DEFAULT_PRESET_ID : settings.exportPresetId,
+  });
 }
