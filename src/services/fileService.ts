@@ -18,7 +18,7 @@ export async function openFile(encoding: DefaultEncoding = 'UTF-8'): Promise<Ope
     multiple: false,
     filters: [
       { name: 'Markdown', extensions: ['md', 'markdown'] },
-      { name: 'HTML', extensions: ['html'] },
+      { name: 'HTML', extensions: ['html', 'htm'] },
       { name: 'Word 文档', extensions: ['docx'] },
       { name: 'All', extensions: ['*'] },
     ],
@@ -32,8 +32,9 @@ export async function openFile(encoding: DefaultEncoding = 'UTF-8'): Promise<Ope
 
 export async function openPath(path: string, encoding: DefaultEncoding = 'UTF-8'): Promise<OpenedFile> {
   const name = path.split('/').pop() || '未命名';
+  const ext = path.split('.').pop()?.toLowerCase();
 
-  if (path.endsWith('.docx')) {
+  if (ext === 'docx') {
     const data = await readFile(path);
     const { convertDocxToHtml } = await import('./docxPreviewService');
     const docxHtml = await convertDocxToHtml(data.buffer as ArrayBuffer);
@@ -41,8 +42,7 @@ export async function openPath(path: string, encoding: DefaultEncoding = 'UTF-8'
   }
 
   const content = await readTextWithEncoding(path, encoding);
-  const ext = path.split('.').pop()?.toLowerCase();
-  const fileType = ext === 'html' ? 'html' as const : 'markdown' as const;
+  const fileType = ext === 'html' || ext === 'htm' ? 'html' as const : 'markdown' as const;
 
   return { path, name, content, dirty: false, lastSavedContent: content, fileType };
 }
@@ -59,7 +59,7 @@ export async function saveFileAs(file: OpenedFile): Promise<OpenedFile> {
     defaultPath: file.name || 'untitled.md',
     filters: [
       { name: 'Markdown', extensions: ['md'] },
-      { name: 'HTML', extensions: ['html'] },
+      { name: 'HTML', extensions: ['html', 'htm'] },
     ],
   });
 
