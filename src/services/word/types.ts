@@ -1,5 +1,14 @@
+/** 内置预设 ID */
+export type BuiltInPresetId = 'legal' | 'academic' | 'report' | 'service-plan' | 'minimal';
+
+/** 用户导入的自定义预设 ID */
+export type CustomPresetId = `custom:${string}`;
+
 /** 预设 ID */
-export type PresetId = 'legal' | 'academic' | 'report' | 'service-plan' | 'minimal';
+export type PresetId = BuiltInPresetId | CustomPresetId;
+
+/** 自定义预设注册表 */
+export type CustomPresetRegistry = Record<CustomPresetId, PresetConfig>;
 
 /** 文本格式标记 */
 export interface TextFormat {
@@ -176,4 +185,5 @@ export interface PresetInfo {
   id: PresetId;
   name: string;
   description: string;
+  source: 'built-in' | 'custom';
 }

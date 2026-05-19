@@ -1,4 +1,4 @@
-import type { PresetConfig, PresetId } from './types';
+import type { BuiltInPresetId, CustomPresetId, CustomPresetRegistry, PresetConfig, PresetId, PresetInfo } from './types';
 
 const legal = {
   name: '法律文书',
@@ -111,20 +111,50 @@ const minimal = {
   paragraph: { line_spacing: 1.5, first_line_indent: 0, align: 'left' },
 } as const satisfies PresetConfig;
 
-export const PRESETS: Record<PresetId, PresetConfig> = { legal, academic, report, 'service-plan': servicePlan, minimal };
+export const PRESETS: Record<BuiltInPresetId, PresetConfig> = { legal, academic, report, 'service-plan': servicePlan, minimal };
 
-export const DEFAULT_PRESET_ID: PresetId = 'legal';
+export const DEFAULT_PRESET_ID: BuiltInPresetId = 'legal';
 
-export function getPreset(id: PresetId): PresetConfig {
-  return PRESETS[id];
+export function isBuiltInPresetId(id: string): id is BuiltInPresetId {
+  return Object.prototype.hasOwnProperty.call(PRESETS, id);
 }
 
-export function listPresets(): Array<{ id: PresetId; name: string; description: string }> {
-  return (Object.keys(PRESETS) as PresetId[]).map((id) => ({
+export function isCustomPresetId(id: string): id is CustomPresetId {
+  return id.startsWith('custom:') && id.length > 'custom:'.length;
+}
+
+export function hasPreset(id: PresetId, customPresets: Partial<CustomPresetRegistry> = {}): boolean {
+  return isBuiltInPresetId(id) || Boolean(customPresets[id as CustomPresetId]);
+}
+
+export function getPreset(id: PresetId, customPresets: Partial<CustomPresetRegistry> = {}): PresetConfig {
+  if (isCustomPresetId(id) && customPresets[id]) {
+    return customPresets[id] as PresetConfig;
+  }
+  return isBuiltInPresetId(id) ? PRESETS[id] : PRESETS[DEFAULT_PRESET_ID];
+}
+
+export function listPresets(customPresets: Partial<CustomPresetRegistry> = {}): PresetInfo[] {
+  const builtIns = (Object.keys(PRESETS) as BuiltInPresetId[]).map((id) => ({
     id,
     name: PRESETS[id].name,
     description: PRESETS[id].description,
+    source: 'built-in' as const,
   }));
+
+  const customs = Object.entries(customPresets)
+    .flatMap(([id, config]) => {
+      if (!isCustomPresetId(id) || !config) return [];
+      return [{
+        id: id as CustomPresetId,
+        name: config.name,
+        description: config.description,
+        source: 'custom' as const,
+      }];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
+
+  return [...builtIns, ...customs];
 }
 
 export function deepMerge(base: Partial<PresetConfig>, override: Partial<PresetConfig>): Partial<PresetConfig> {

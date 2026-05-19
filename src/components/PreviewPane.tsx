@@ -3,13 +3,15 @@ import '../styles/preview.css';
 import type { TocItem } from '../types/document';
 import { useSettings } from '../hooks/useSettings';
 import { detectMarkdownRenderFeatures } from '../services/markdownFeatureDetector';
+import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
 
 type PreviewPaneProps = {
   source: string;
   tocIds: TocItem[];
+  wideTables?: boolean;
 };
 
-export function PreviewPane({ source, tocIds }: PreviewPaneProps) {
+export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const deferredSource = useDeferredValue(source);
   const deferredTocIds = useDeferredValue(tocIds);
@@ -41,6 +43,12 @@ export function PreviewPane({ source, tocIds }: PreviewPaneProps) {
         mode: 'light',
         anchor: 0,
         cdn: '/vditor',
+        i18n: VDITOR_PREVIEW_I18N,
+        icon: undefined,
+        theme: {
+          current: 'light',
+          path: '',
+        },
         hljs: {
           style: 'github',
           enable: renderFeatures.hasHighlightableCode,
@@ -69,7 +77,8 @@ export function PreviewPane({ source, tocIds }: PreviewPaneProps) {
 
   return (
     <div
-      className="preview-shell"
+      className={`preview-shell ${wideTables ? 'html-preview-pane' : ''}`}
+      aria-label={wideTables ? 'HTML 阅读预览' : 'Markdown 阅读预览'}
       style={{
         '--preview-font-size': `${settings.previewFontSize}px`,
         '--preview-line-height': `${settings.previewLineHeight}`,
@@ -77,7 +86,10 @@ export function PreviewPane({ source, tocIds }: PreviewPaneProps) {
         '--preview-font-family': previewFontFamily,
       } as React.CSSProperties}
     >
-      <div ref={containerRef} className="vditor-reset preview-content" />
+      <div
+        ref={containerRef}
+        className={`vditor-reset preview-content ${wideTables ? 'html-table-preview-content' : ''}`}
+      />
     </div>
   );
 }

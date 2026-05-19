@@ -5,11 +5,15 @@ import { PreviewSection } from './settings/PreviewSection';
 import { AppearanceSection } from './settings/AppearanceSection';
 import { ShortcutsSection } from './settings/ShortcutsSection';
 import { ExportSection } from './settings/ExportSection';
+import { AboutSection } from './settings/AboutSection';
+import type { UpdateCheckResult } from '../services/updateService';
 
-type SettingsSection = 'general' | 'editor' | 'preview' | 'appearance' | 'shortcuts' | 'export';
+type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>;
+type SettingsSection = 'general' | 'editor' | 'preview' | 'appearance' | 'shortcuts' | 'export' | 'about';
 
 interface SettingsPageProps {
   onClose: () => void;
+  onUpdateAvailable: (update: AvailableUpdate) => void;
 }
 
 const NAV_ITEMS: { id: SettingsSection; label: string }[] = [
@@ -19,9 +23,10 @@ const NAV_ITEMS: { id: SettingsSection; label: string }[] = [
   { id: 'appearance', label: '外观' },
   { id: 'shortcuts', label: '快捷键' },
   { id: 'export', label: '导出' },
+  { id: 'about', label: '关于' },
 ];
 
-export function SettingsPage({ onClose }: SettingsPageProps) {
+export function SettingsPage({ onClose, onUpdateAvailable }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('general');
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -66,6 +71,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
           {activeSection === 'appearance' && <AppearanceSection />}
           {activeSection === 'shortcuts' && <ShortcutsSection />}
           {activeSection === 'export' && <ExportSection />}
+          {activeSection === 'about' && <AboutSection onUpdateAvailable={onUpdateAvailable} />}
         </div>
       </div>
     </div>
