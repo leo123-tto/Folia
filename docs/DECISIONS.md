@@ -2,6 +2,20 @@
 
 ## 第一部分：决策记录
 
+### [DEC-009] - 2026-05-20 - CI 包管理器选型：pnpm 替代 bun/npm
+
+**背景**
+GitHub Actions 全平台构建（macOS ARM + Intel + Windows）持续失败。根本原因是 npm/bun 的 optional dependencies bug（npm/cli#4828）：macOS 生成的 lock file 不包含 Windows 平台的 `@tauri-apps/cli-win32-x64-msvc` 和 `@rolldown/binding-win32-x64-msvc`。
+
+已尝试 npm ci、npm install、bun install、bun install --no-save、cargo tauri（需额外安装 tauri-cli），均失败。
+
+**决策**
+改用 pnpm。pnpm 在每个 CI runner 上独立解析 optional dependencies，不依赖本地 lock file 的跨平台完整性。参考 cc-switch 项目的实践。
+
+**影响**
+- CI workflow 从 `oven-sh/setup-bun@v2` + `bun install --no-save` 改为 `pnpm/action-setup@v4` + `pnpm install`
+- 本地开发仍可用 bun/npm，不影响日常开发体验
+
 ### [DEC-008] - 2026-05-18 - 自动更新：从 GitHub Releases 拉取
 
 **背景**

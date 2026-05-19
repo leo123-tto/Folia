@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.7] - 2026-05-19
 
+### Added
+
+- GitHub Actions 全平台自动发布工作流：tag 触发 → macOS ARM/Intel DMG + Windows EXE/MSI → 签名 → `latest.json` → GitHub Release。
+- Release 发布后自动同步构建产物到 Gitee，生成 Gitee 专属 `latest.json` 供国内用户自动更新。
+
 ### Changed
 
 - Updater 构建配置 `createUpdaterArtifacts` 改为 `true`，构建时生成签名产物。
 - Updater endpoint URL 从 `{{target}}-{{arch}}.json` 改为统一的 `latest.json`。
 - Bundle identifier 从 `com.folia.app` 改为 `com.folia.reader`，避免 macOS `.app` 扩展名冲突。
+- Updater endpoints 增加 Gitee 备用源（国内优先），GitHub 作为 fallback。
 
 ### Fixed
 
