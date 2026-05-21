@@ -47,6 +47,10 @@ const WechatPreviewPane = lazy(() =>
   import('../components/WechatPreviewPane').then((module) => ({ default: module.WechatPreviewPane })),
 );
 
+const HtmlPresentationPane = lazy(() =>
+  import('../components/HtmlPresentationPane').then((module) => ({ default: module.HtmlPresentationPane })),
+);
+
 const HtmlTableEditor = lazy(() =>
   import('../components/HtmlTableEditor').then((module) => ({ default: module.HtmlTableEditor })),
 );
@@ -83,6 +87,7 @@ export function AppLayout() {
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('none');
   const [rightPanelWidth, setRightPanelWidth] = useState(460);
   const [resizing, setResizing] = useState(false);
+  const [htmlPresentationVisible, setHtmlPresentationVisible] = useState(false);
   const [htmlTableEditorVisible, setHtmlTableEditorVisible] = useState(false);
   const [updateDialog, setUpdateDialog] = useState<{ source: UpdateSource; update: AvailableUpdate } | null>(null);
 
@@ -98,6 +103,7 @@ export function AppLayout() {
       setFile(opened);
       setToc(extractToc(opened.content));
       if (opened.path) setLastOpenedPath(opened.path);
+      setHtmlPresentationVisible(false);
       if (opened.fileType === 'docx') {
         setRightPanelMode('none');
       } else {
@@ -112,6 +118,7 @@ export function AppLayout() {
     setFile(opened);
     setToc(opened.fileType === 'docx' ? [] : extractToc(opened.content));
     setLastOpenedPath(path);
+    setHtmlPresentationVisible(false);
     if (opened.fileType === 'docx') {
       setRightPanelMode('none');
     } else {
@@ -156,16 +163,19 @@ export function AppLayout() {
 
   const handleToggleEditorMode = useCallback(() => {
     if (file.fileType === 'docx') return;
+    setHtmlPresentationVisible(false);
     setEditorMode((mode) => mode === 'source' ? 'wysiwyg' : 'source');
   }, [file.fileType]);
 
   const handleToggleWordPreview = useCallback(() => {
     if (file.fileType === 'docx') return;
+    setHtmlPresentationVisible(false);
     setRightPanelMode((mode) => mode === 'word' ? 'none' : 'word');
   }, [file.fileType]);
 
   const handleToggleWechatPreview = useCallback(() => {
     if (file.fileType === 'docx') return;
+    setHtmlPresentationVisible(false);
     setRightPanelMode((mode) => mode === 'wechat' ? 'none' : 'wechat');
   }, [file.fileType]);
 
@@ -198,6 +208,12 @@ export function AppLayout() {
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
   }, []);
+
+  const handleOpenHtmlPresentation = useCallback(() => {
+    if (file.fileType !== 'html') return;
+    setRightPanelMode('none');
+    setHtmlPresentationVisible(true);
+  }, [file.fileType]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -319,6 +335,7 @@ export function AppLayout() {
 
   const isDocx = file.fileType === 'docx';
   const shouldUseStableHtmlPreview = prefersStableHtmlPreview(file.content, file.fileType);
+  const shouldShowHtmlPresentation = htmlPresentationVisible && file.fileType === 'html' && !isDocx;
   const htmlTableBlocks = useMemo(
     () => shouldUseStableHtmlPreview && !isDocx ? findHtmlTableBlocks(file.content) : [],
     [file.content, isDocx, shouldUseStableHtmlPreview],
@@ -330,6 +347,7 @@ export function AppLayout() {
     rightPanelMode !== 'none' && !isDocx ? 'right-panel-open' : '',
     rightPanelMode === 'word' && !isDocx ? 'word-preview-open' : '',
     rightPanelMode === 'wechat' && !isDocx ? 'wechat-preview-open' : '',
+    shouldShowHtmlPresentation ? 'html-presentation-layout' : '',
     resizing ? 'is-resizing' : '',
   ].filter(Boolean).join(' ');
 
@@ -411,6 +429,14 @@ export function AppLayout() {
     <Suspense fallback={<div className="editor-pane lazy-pane"><span>源码编辑器加载中</span></div>}>
       <EditorPane source={file.content} onChange={handleContentChange} />
     </Suspense>
+  ) : shouldShowHtmlPresentation ? (
+    <Suspense fallback={<div className="html-presentation-pane lazy-pane" aria-label={t('htmlPresentationAria')} />}>
+      <HtmlPresentationPane
+        source={file.content}
+        filePath={file.path}
+        onBack={() => setHtmlPresentationVisible(false)}
+      />
+    </Suspense>
   ) : shouldUseStableHtmlPreview ? (
     <div className="html-reading-pane" aria-label={t('htmlReadingTitle')}>
       <div className="html-reading-toolbar">
@@ -419,6 +445,15 @@ export function AppLayout() {
           <small>{t('htmlReadingDesc')}</small>
         </div>
         <div className="html-reading-toolbar-actions">
+          {file.fileType === 'html' && (
+            <button
+              type="button"
+              className="settings-action-button html-reading-presentation-button"
+              onClick={handleOpenHtmlPresentation}
+            >
+              {t('htmlPresentationOpenLabel')}
+            </button>
+          )}
           <button
             type="button"
             className="settings-action-button html-reading-table-button"

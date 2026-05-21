@@ -85,6 +85,15 @@ documentViewMode 检测文件类型与原生 HTML table
      ↓
      生成同一份 previewHtml、clipboardHtml、plainText 和 warnings；复制到公众号编辑器与导出 HTML 共用当前预设的 inline-styled article
 
+└─ HtmlPresentationPane / HTML 演示模式:
+     `.html/.htm` 默认仍先进入安全 HTML 阅读预览
+     ↓
+     用户点击“演示模式”后才懒加载
+     ↓
+     htmlPresentationService 为当前 HTML 构造 iframe 文档，内联同目录脚本 / 样式 / 图片资源，并注入本地 base href 和轻量 postMessage 翻页 bridge
+     ↓
+     sandbox iframe 运行用户 HTML，不启用 allow-same-origin；上一页 / 下一页按钮向 iframe 发送命令并转成常见键盘事件
+
 Word 导出:
 Markdown 源码
   ↓
@@ -114,6 +123,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | `vditorPreviewConfig.ts` | 按需提供 Vditor.preview 所需中文文案，避免纯预览链路额外请求 i18n 脚本 |
 | `word/presetImport.ts` | 解析和校验用户导入的 JSON 导出预设，基于内置预设做深合并并生成自定义预设 ID |
 | `htmlExportPresets.ts` | HTML 导出预设模型、少量通用内置主题、隐藏 legacy base 兼容项、自定义预设 ID/registry 归一化 |
+| `htmlPresentationService.ts` | HTML 演示模式服务：生成带本地 base href 的 iframe 文档，内联同目录脚本 / 样式 / 图片资源，注入翻页 message bridge，并向演示 iframe 发送上一页 / 下一页命令 |
 | `wechatPreviewService.ts` | HTML 导出兼容服务：清洗 Vditor 渲染结果，按当前 HTML 预设生成预览、剪贴板 HTML、纯文本、导出文件和 JSON 预设导入 / 导出 |
 | `wordPreviewStyle.ts` | 将 Word 导出 `PresetConfig` 映射为 A4 纸张预览 CSS 变量 |
 | `updateService.ts` | 封装 Tauri updater 检查、下载、安装和重启；浏览器预览下返回 unsupported |
@@ -132,6 +142,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | `WysiwygEditorPane.tsx` | Vditor IR 即时渲染编辑器，普通 Markdown 的默认主编辑体验；当前块显示 Markdown 标记，非当前块保持预览观感 |
 | `PreviewPane.tsx` | `Vditor.preview()` 稳定阅读预览，原生 HTML table 和 `.html` 文件默认使用；外层由 AppLayout 提供表格编辑和源码编辑入口 |
 | `HtmlTableEditor.tsx` | HTML table 结构化编辑 modal：列出 table blocks，网格展示 origin cells，编辑单元格 HTML，并调用 block 替换保存 |
+| `HtmlPresentationPane.tsx` | HTML 演示模式主视图：用 sandbox iframe 运行 `.html/.htm` 文件内容，提供上一页、下一页和返回阅读预览操作 |
 | `WordPaperPreviewPane.tsx` | 按需打开的 Word 多页纸张预览，包含启用预设弹出选择器、面板内导出按钮、A4 分页、长 HTML 表格按行拆页和整体缩放 |
 | `WechatPreviewPane.tsx` | 按需打开的 HTML 预览面板，保留旧文件名作为兼容层；负责 Vditor 渲染、当前 HTML 预设预览、复制到公众号编辑器和导出 HTML |
 | `UpdateDialog.tsx` | 发现新版本后的安装确认与下载进度对话框 |
@@ -189,5 +200,5 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 - 窗口：980×680，可调整大小
 - macOS 标题栏：`titleBarStyle: Overlay` + `hiddenTitle: true`，系统红黄绿按钮覆盖在 WebView 顶部，前端 Toolbar 预留左侧空间；中间空白和居中文件标题使用 `data-tauri-drag-region`，整条 Toolbar 提供 JS `startDragging()` fallback；双击空白区域调用 `toggleMaximize()`；不使用 Electron 风格 `-webkit-app-region`
-- CSP：`default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self'`
+- CSP：`default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' file:; connect-src 'self'; media-src 'self' file:; frame-src 'self' data: blob:`。HTML 演示模式的同目录 JS / CSS / 图片优先内联到 iframe 文档；`file:` 仅作为图片、字体和媒体资源兜底，外部网络连接仍由 `connect-src 'self'` 默认阻断。
 - 插件权限：dialog:allow-open, dialog:allow-save, fs:allow-read-text-file, fs:allow-write-text-file, updater:default, process:allow-restart, core:window:allow-set-title, core:window:allow-start-dragging, core:window:allow-toggle-maximize

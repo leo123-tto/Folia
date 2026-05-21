@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - HTML 预览面板支持复制到公众号编辑器和导出 HTML：复制写入 `text/html` 与 `text/plain` fallback，导出文件包含完整 HTML 结构；正文节点已按当前 HTML 预设生成内联样式，同时保留文档级 CSS 作为兜底。
 - Settings 新增“HTML 导出”分区，提供 `预设库 / 自定义槽位 / CSS 示例` 二级页、3 套简单通用内置 HTML 主题、2 个常规自定义 CSS 槽位和 CSS 预设交换 JSON 导入 / 导出。
 - Settings 新增“授权”分区，可输入内测码并显示 Word / HTML 自定义预设槽位上限；内测授权启用后槽位上限从 2 个提升到 8 个。
+- HTML 文件新增“演示模式”：`.html/.htm` 默认仍使用安全阅读预览，用户点击演示模式后在隔离 iframe 中运行当前 HTML，并提供上一页、下一页和返回阅读预览操作。
 
 ### Changed
 
@@ -38,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - 自动检查更新恢复为可配置开关，默认开启；关于页只保留开关和手动检查更新入口，不再展示“启动后延迟检查”等技术说明。
 - 快捷键设置精简为打开、保存、另存为和导出 Word，移除暂未实际提供的命令面板占位。
 - Tauri capabilities 新增 `process:allow-restart`，保证安装更新后可以正常重启应用。
+- Tauri CSP 为 HTML 演示模式允许内联演示脚本，并保留本地图片、字体和媒体资源兜底；同目录 JS / CSS / 图片会优先内联进演示 iframe，外部网络连接继续受限。
 - 项目定位从"专为法律文档设计"调整为"面向知识工作者的 Markdown 阅读与 Word 导出工具"，强调 HTML 表格 Markdown 预览与 Word 纸张预览导出两大核心能力。
 - 关于页信息结构重新整理：版本只显示版本号，自动检查更新和手动检查更新同栏，项目地址与作者链接使用一致字体。
 - 关于作者区改为作者信息与微信二维码两栏，移除微信号文字和作者业务方向描述。
