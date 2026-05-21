@@ -28,6 +28,7 @@ src-tauri/target/
 *.key
 
 # Claude Code
+.worktrees/
 .claude/worktrees/
 .claude/settings.local.json
 
