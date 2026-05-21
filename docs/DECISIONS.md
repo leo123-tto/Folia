@@ -14,13 +14,16 @@
 - 演示内容必须放在隔离 iframe 或独立 Tauri WebView 中，不能直接 `dangerouslySetInnerHTML` 注入主 React DOM。
 - 推荐第一版优先支持自包含 HTML 和同目录本地资源；外部网络资源默认提示或通过设置显式允许。
 - 翻页操作以演示页面自身的键盘事件为主，Folia 可补充上一页/下一页按钮和常见框架轻量适配，但不把所有 HTML 演示框架解析为统一内部模型。
+- 第一版采用 sandbox iframe + `srcDoc`，不启用 `allow-same-origin`；同目录 JS / CSS / 图片资源优先内联到 iframe 文档，`base href` 作为剩余相对资源兜底，通过 `postMessage` bridge 触发常见翻页键。
+- Tauri CSP 为演示模式允许内联演示脚本，并保留本地图片、字体和媒体资源兜底；`connect-src` 继续保持 `self`，外部网络资源不默认放行。
 
 **验证**
-- 本次仅完成可行性评估与任务记录，未修改运行时代码。
+- `npm test -- src/services/htmlPresentationService.test.ts src/components/HtmlPresentationPane.test.tsx`
+- `npx tsc --noEmit`
 
 **影响**
-- HTML 文件将形成两个清晰模式：默认安全阅读、手动进入受信任演示。
-- 后续实现需要同时更新 Tauri 安全配置、文件资源服务、主界面入口、设置项和 E2E 回归。
+- HTML 文件形成两个清晰模式：默认安全阅读、手动进入受信任演示。
+- 第一版不读取演示页码或框架状态；上一页 / 下一页按钮通过键盘事件适配 Reveal.js、Marp 等常见演示输出。
 
 ### [DEC-038] - 2026-05-21 - Markdown 主显示区继续让位给内容高度
 

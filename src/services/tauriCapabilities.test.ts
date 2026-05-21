@@ -14,4 +14,17 @@ describe('Tauri capabilities', () => {
       'core:window:allow-toggle-maximize',
     ]));
   });
+
+  it('keeps local HTML presentation resources inside the desktop CSP', () => {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), 'src-tauri/tauri.conf.json'), 'utf8'),
+    ) as { app?: { security?: { csp?: string } } };
+
+    const csp = config.app?.security?.csp ?? '';
+
+    expect(csp).toContain("script-src 'self' 'unsafe-eval' 'unsafe-inline'");
+    expect(csp).toContain("img-src 'self' data: file:");
+    expect(csp).toContain("frame-src 'self' data: blob:");
+    expect(csp).toContain("connect-src 'self'");
+  });
 });
