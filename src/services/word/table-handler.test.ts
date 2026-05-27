@@ -41,6 +41,26 @@ describe('createHtmlTable', () => {
     expect(getDocxRowCells(rows[1])).toHaveLength(2);
   });
 
+  it('applies preset row height and cell margins to exported tables', () => {
+    const preset = getPreset(DEFAULT_PRESET_ID);
+    const table = createHtmlTable(`
+      <table>
+        <tr><th>事项</th><th>说明</th></tr>
+        <tr><td>行高</td><td>内边距</td></tr>
+      </table>
+    `, preset);
+
+    const rows = getDocxRows(table);
+    const rowHeight = findDocxNode(rows[0], 'w:trHeight');
+    const tableCellMargin = findDocxNode(table, 'w:tblCellMar');
+    const topMargin = findDirectChild(tableCellMargin, 'w:top');
+
+    expect(findDocxAttribute(rowHeight, 'w:val')).toBe(Math.round(preset.table.row_height * 567));
+    expect(findDocxAttribute(rowHeight, 'w:hRule')).toBe('atLeast');
+    expect(findDocxAttribute(topMargin, 'w:w')).toBe(Math.round(preset.table.cell_margin * 567));
+    expect(findDocxAttribute(topMargin, 'w:type')).toBe('dxa');
+  });
+
   it('pads uncovered short rows without filling rowspan-covered slots', () => {
     const table = createHtmlTable(`
       <table>
@@ -100,4 +120,41 @@ function getDocxRows(table: unknown): DocxNode[] {
 
 function getDocxRowCells(row: DocxNode): DocxNode[] {
   return row.options?.children ?? [];
+}
+
+function findDocxNode(node: unknown, rootKey: string): DocxNode | undefined {
+  if (!node || typeof node !== 'object') return undefined;
+  const current = node as DocxNode;
+  if (current.rootKey === rootKey) return current;
+  if (!Array.isArray(current.root)) return undefined;
+  for (const child of current.root) {
+    const found = findDocxNode(child, rootKey);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function findDirectChild(node: DocxNode | undefined, rootKey: string): DocxNode | undefined {
+  return node?.root?.find((child) => child.rootKey === rootKey);
+}
+
+function findDocxAttribute(node: unknown, keyName: string): unknown {
+  if (!node || typeof node !== 'object') return undefined;
+  const current = node as { root?: unknown; rootKey?: string };
+
+  if (current.rootKey === '_attr' && current.root && typeof current.root === 'object' && !Array.isArray(current.root)) {
+    for (const [name, raw] of Object.entries(current.root as Record<string, unknown>)) {
+      if (!raw || typeof raw !== 'object') continue;
+      const attr = raw as { key?: string; value?: unknown };
+      if (name === keyName || attr.key === keyName) return attr.value;
+    }
+  }
+
+  const children = Array.isArray(current.root) ? current.root : [];
+  for (const child of children) {
+    const found = findDocxAttribute(child, keyName);
+    if (found !== undefined) return found;
+  }
+
+  return undefined;
 }

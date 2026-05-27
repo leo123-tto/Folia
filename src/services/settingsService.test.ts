@@ -88,17 +88,28 @@ describe('settingsService', () => {
     setExportPreset('report');
     updateSettings({
       editorFontSize: 16,
-      locale: 'en-US',
+      locale: 'ja-JP',
       wechatCustomCss: '.folia-wechat-article p { color: red; }',
     });
 
     expect(getSettings()).toMatchObject({
       exportPresetId: 'report',
       editorFontSize: 16,
-      locale: 'en-US',
+      locale: 'ja-JP',
       wechatCustomCss: '.folia-wechat-article p { color: red; }',
       previewWidth: 680,
     });
+  });
+
+  it('normalizes unsupported locales back to Chinese while accepting English and Japanese', () => {
+    updateSettings({ locale: 'en-US' });
+    expect(getSettings().locale).toBe('en-US');
+
+    updateSettings({ locale: 'ja-JP' });
+    expect(getSettings().locale).toBe('ja-JP');
+
+    localStorage.setItem('folia-settings', JSON.stringify({ locale: 'fr-FR' }));
+    expect(getSettings().locale).toBe('zh-CN');
   });
 
   it('keeps old settings compatible with the default empty WeChat custom CSS', () => {

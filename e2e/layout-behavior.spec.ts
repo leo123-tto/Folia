@@ -269,7 +269,7 @@ test('HTML export settings switch subpages and import custom CSS slots', async (
   await expect(page.getByText('0/2', { exact: true })).toBeVisible();
   await expect(page.getByLabel(/HTML 文章预览/)).toHaveCount(0);
   await expect(page.locator('.settings-preset-workbench--full')).toBeVisible();
-  await expect(page.getByRole('button', { name: '导入 CSS 预设文件', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '导入 CSS 预设文件', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '保存 CSS 预设' })).toHaveCount(0);
   await expect(page.getByLabel('自定义 HTML 预设名称')).toHaveCount(0);
   await expect(page.getByLabel('自定义 HTML CSS')).toHaveCount(0);
@@ -527,6 +527,17 @@ test('settings modal keeps a fixed size across sections', async ({ page }) => {
   expect(Math.round(after!.height)).toBe(Math.round(before!.height));
 });
 
+test('general settings can switch the interface to Japanese', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+
+  await page.locator('.settings-select').first().selectOption('ja-JP');
+
+  await expect(page.getByRole('heading', { name: '一般' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Word 書き出し', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'HTML 書き出し', exact: true })).toBeVisible();
+});
+
 test('Word export settings make the paper preview expandable', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '设置' }).click();
@@ -561,6 +572,7 @@ test('Word export settings make the paper preview expandable', async ({ page }) 
   await expect(page.getByText('0/2', { exact: true })).toBeVisible();
   await expect(page.locator('.settings-preset-slot-empty')).toHaveCount(2);
   await expect(page.getByText('使用更多自定义槽位')).toBeVisible();
+  await expect(page.getByRole('button', { name: '导入 JSON', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '导入 JSON 到自定义槽位 1' })).toBeVisible();
   await expect(page.getByRole('button', { name: /放大查看 .* Word 预览/ })).toHaveCount(0);
   await expect(page.locator('.settings-preset-workbench--full')).toBeVisible();
@@ -586,6 +598,8 @@ test('license settings activate beta slots for Word and HTML presets', async ({ 
 
   await page.getByRole('button', { name: '前往内测授权' }).click();
   await expect(page.getByRole('heading', { name: '内测授权' })).toBeVisible();
+  await expect(page.getByText('内测码只用于开启本机额外自定义槽位。')).toBeVisible();
+  await expect(page.getByText(/购买|订阅|收费/)).toHaveCount(0);
   await page.getByLabel('内测码').fill('FOLIA-BETA-2026');
   await page.getByRole('button', { name: '激活内测授权' }).click();
 
