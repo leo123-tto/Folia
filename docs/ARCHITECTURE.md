@@ -12,6 +12,10 @@
 | 文件操作 | Tauri plugin-dialog / plugin-fs | |
 | 自动更新 | Tauri plugin-updater / plugin-process | 检查更新、安装后重启 |
 
+## 工程配置
+
+根目录只保留包管理文件、前端入口和桌面工程入口；ESLint、Playwright、Vite 与 TypeScript 配置集中放在 `config/`。日常开发统一通过 npm scripts 间接调用这些配置，避免开发者记忆具体配置路径。
+
 ## 系统架构
 
 ```
@@ -128,8 +132,8 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | `wordPreviewStyle.ts` | 将 Word 导出 `PresetConfig` 映射为 A4 纸张预览 CSS 变量 |
 | `updateService.ts` | 封装 Tauri updater 检查、下载、安装和重启；浏览器预览下返回 unsupported |
 | `settingsService.ts` | 管理 localStorage 设置、旧配置迁移、Word / HTML 导出预设启用停用、自定义预设、语言设置、设置变更广播、上次打开文件路径 |
-| `i18n.ts` | 轻量多语言字典，第一阶段覆盖设置导航、关于页、顶部栏和 Word 预览核心文案 |
-| `licenseService.ts` | 高级槽位授权抽象层：本地内测码验证、本地授权缓存、未来在线激活、在线校验、撤销/停用均通过该层封装；合规确认前不接公开购买流程，避免把支付平台密钥或发码私钥写入桌面端 |
+| `i18n.ts` | 轻量多语言字典，提供中文、英文、日文，第一阶段覆盖设置导航、关于页、顶部栏和 Word 预览核心文案 |
+| `licenseService.ts` | 额外槽位授权抽象层：本地内测码验证、本地授权缓存、未来在线激活、在线校验、撤销/停用均通过该层封装 |
 | `sanitizeService.ts` | DOMPurify HTML 清洗；当前用于 docx 预览 HTML 安全边界 |
 | `docxPreviewService.ts` | 按需加载 mammoth，将 docx 转换为已清洗 HTML |
 | `wordExportService.ts` | 按需加载 Word 导出转换链路并写入 .docx 文件 |
@@ -145,8 +149,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | `HtmlPresentationPane.tsx` | HTML 演示模式主视图：用 sandbox iframe 运行 `.html/.htm` 文件内容，提供上一页、下一页和返回阅读预览操作 |
 | `WordPaperPreviewPane.tsx` | 按需打开的 Word 多页纸张预览，包含启用预设弹出选择器、面板内导出按钮、A4 分页、长 HTML 表格按行拆页和整体缩放 |
 | `WechatPreviewPane.tsx` | 按需打开的 HTML 预览面板，保留旧文件名作为兼容层；负责 Vditor 渲染、当前 HTML 预设预览、复制到公众号编辑器和导出 HTML |
-| `UpdateDialog.tsx` | 发现新版本后的安装确认与下载进度对话框 |
-| `Toolbar.tsx` | 工具栏：打开 / 保存 / 另存为 / 源码模式 / Word 预览 / HTML 预览 / 设置 |
+| `Toolbar.tsx` | 工具栏：打开 / 保存 / 另存为 / 源码模式 / Word 预览 / HTML 预览 / 下载完成后的重启更新 / 设置 |
 | `FloatingToc.tsx` | 默认浮动大纲：标题层级刻度、hover 展开、轨道点击固定/取消固定、点击跳转和当前标题高亮 |
 | `LicenseSection.tsx` | Settings / 授权页面：输入内测码、显示授权状态和可用自定义预设槽位数 |
 | `StatusBar.tsx` | 底部状态栏：文件路径 + dirty 标记 |
@@ -155,7 +158,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 | 文件 | 职责 |
 |------|------|
-| `AppLayout.tsx` | 主布局，管理文件状态、TOC 提取与浮动大纲状态、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换与 Word 预览面板 |
+| `AppLayout.tsx` | 主布局，管理文件状态、TOC 提取与浮动大纲状态、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换、Word 预览面板和后台更新下载状态 |
 | `App.tsx` | 入口组件 |
 
 ## 启动性能策略
@@ -166,8 +169,8 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 - 源码模式布局要求 CodeMirror wrapper 被主内容区高度约束，滚动只发生在 `.cm-scroller`，避免长文档把编辑器撑高后被外层裁剪。
 - 稳定 HTML 阅读预览通过 `React.lazy()` 拆分，仅在检测到原生 HTML table、`.html` 文件或后续明确需要阅读预览时加载。
 - Word 纸张预览组件通过 `React.lazy()` 拆分，仅在用户点击“Word 预览”时加载；输入内容使用 debounce 更新预览，A4 页面使用真实 CSS 尺寸后分页，长 HTML 表格按 `tr` 分片，并整体缩放到右侧面板。
-- 自定义导出预设、内置预设停用状态和语言设置只保存在 localStorage 中；Settings / Word 导出按需导入 JSON，并仅在预设库中显示可放大的单页纸预览；Settings / HTML 导出按需管理 CSS 预设、CSS 预设交换格式和小型文章预览，应用启动仅读取轻量设置对象，不加载 Word 导出转换链路。
-- 高级槽位授权状态按轻量本地缓存读取；启动时不得同步阻塞网络校验。合规确认前只支持邀请制内测激活码，不提供价格页、购买入口或内置支付。未来在线授权只在用户主动激活、手动刷新授权或后台空闲校验时触发。
+- 自定义导出预设、内置预设停用状态和语言设置只保存在 localStorage 中；Settings / Word 导出通过空槽位导入 JSON，并仅在预设库中显示可放大的单页纸预览；Settings / HTML 导出通过空槽位导入 CSS / JSON 预设文件，应用启动仅读取轻量设置对象，不加载 Word 导出转换链路。
+- 额外槽位授权状态按轻量本地缓存读取；启动时不得同步阻塞网络校验。内测码只用于开启本机额外自定义槽位；未来在线授权只在用户主动激活、手动刷新授权或后台空闲校验时触发。
 - Word 预览前通过 `markdownFeatureDetector` 做内部特征探测：当文档只包含 Mermaid、math、Graphviz、Markmap 等由 Vditor 自渲染的 fenced code 时，禁用普通代码高亮脚本加载；检测到普通代码块时仍启用 highlight.js。
 - Vditor preview 使用内联中文文案并禁用 icon 脚本加载；内容主题由 Folia 样式接管，跳过 `content-theme/light.css` 请求。
 - Settings 页面、Word 导出链路、HTML 预览面板、docx 预览组件与转换链路均按需加载。
@@ -176,7 +179,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 ## 自动更新
 
-- 运行时：`AppLayout` 在 Tauri 桌面端根据 `autoUpdateCheck` 设置延迟调用 `updateService.checkForAppUpdate()`；延迟调度由 `autoUpdateScheduler.ts` 管理，只有检查真正开始时才标记为已启动，避免用户在延迟期关闭再开启后漏检。自动检查默认开启，可在 Settings / 关于关闭。发现更新后显示居中的 `UpdateDialog`，用户确认后 `downloadAndInstall()` 并通过 process 插件 `relaunch()`。
+- 运行时：`AppLayout` 在 Tauri 桌面端根据 `autoUpdateCheck` 设置延迟调用 `updateService.checkForAppUpdate()`；延迟调度由 `autoUpdateScheduler.ts` 管理，只有检查真正开始时才标记为已启动，避免用户在延迟期关闭再开启后漏检。自动检查默认开启，可在 Settings / 关于关闭。发现更新后直接调用 `update.download()` 后台下载；下载完成后 Toolbar 显示“重启更新”，用户点击后执行 `update.install()` 并通过 process 插件 `relaunch()`。
 - 更新源：`src-tauri/tauri.conf.json` 使用 GitHub Releases endpoint `https://github.com/cat-xierluo/Folia/releases/latest/download/latest.json`。Gitee 仅作为 Release 产物同步镜像，不写入客户端静态 endpoint。
 - 权限：默认 capabilities 需要同时包含 `updater:default`、`process:allow-restart` 和标题栏使用的 `core:window:allow-start-dragging` / `core:window:allow-toggle-maximize` / `core:window:allow-set-title`，否则更新重启或自定义标题栏窗口操作会被 Tauri ACL 拦截。
 - 签名：公钥写入 Tauri updater 配置；私钥位于本机 `~/.tauri/folia.key`，不得提交到仓库。

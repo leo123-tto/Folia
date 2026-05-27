@@ -2,6 +2,72 @@
 
 ## 第一部分：决策记录
 
+### [DEC-044] - 2026-05-22 - 根目录配置文件集中到 config
+
+**背景**
+用户希望项目根目录更清爽，减少散落在根目录的 JS / JSON / TS 配置文件。当前根目录同时放置 ESLint、Playwright、Vite 和 TypeScript 配置，虽然符合各工具默认发现机制，但视觉上与源码、文档、桌面工程入口混杂。
+
+**决策**
+- 根目录保留包管理文件、`index.html`、Tauri 工程、源码目录、文档目录和脚本目录。
+- 将 `eslint.config.js`、`playwright.config.ts`、`vite.config.ts`、`tsconfig.json`、`tsconfig.app.json`、`tsconfig.node.json` 迁移到 `config/`。
+- npm scripts 显式传入配置路径，日常开发仍使用 `npm run dev`、`npm test`、`npm run lint`、`npm run typecheck`、`npm run build`，不要求开发者记忆配置文件位置。
+- TypeScript project references、Vite root、Vitest setup file、Playwright testDir 和 webServer cwd 都按新目录重设，避免相对路径漂移。
+
+**验证**
+- `npm test`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test:e2e -- --grep "settings modal"`
+- `npm run build`
+- `git diff --check`
+
+**影响**
+- 根目录更接近“入口层”，配置集中在 `config/`。
+- 直接运行 `npx tsc --noEmit` 或 `npx playwright test` 不再作为推荐入口；项目文档统一改为 npm scripts。
+
+### [DEC-043] - 2026-05-22 - 导出设置页继续减法，日文纳入轻量 i18n
+
+**背景**
+用户继续复验设置页后指出：内测授权页不需要说明购买、订阅或收费流程，只需说明内测码用于本机额外自定义槽位；Word / HTML 自定义槽位顶部导入按钮与空槽位上传入口重复；预览放大层过大且 HTML 预览缩略框占宽偏多；界面语言需要新增日文。同时用户要求继续排查 Word 默认预设的预览与实际导出差异。
+
+**决策**
+- 授权页文案收敛为“内测码只用于开启本机额外自定义槽位”。
+- Word / HTML 自定义槽位页移除顶部导入按钮，保留空槽位点击导入作为唯一主路径；槽位页隐藏预设描述，减少解释文字。
+- 设置页右侧预览缩略框收窄；放大预览弹层限制到设置页尺度以内，内部内容滚动。
+- 语言设置新增 `ja-JP`，沿用现有轻量 i18n 覆盖范围：设置导航、关于页、顶部栏和核心预览文案。
+- Word 设置页预览样本补充引用、列表、代码块、行内代码和分割线；`.docx` 表格导出补齐预设行高与单元格边距。
+
+**验证**
+- `npm test -- src/services/settingsService.test.ts src/services/word/table-handler.test.ts src/services/wordPreviewStyle.test.ts src/services/updateService.test.ts`
+- `npx tsc --noEmit`
+- `npm run lint`
+- `npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|license settings|Japanese|settings modal"`
+
+**影响**
+- 设置页导出配置更接近“槽位列表”而不是表单页面。
+- 默认 Word 预设中的表格密度在预览和真实导出之间更一致。
+- 日文用户能切换到基础日文界面。
+
+### [DEC-042] - 2026-05-22 - 自动更新改为后台下载和顶部重启入口
+
+**背景**
+用户复验软件更新流程后指出：当前发现更新后进入下载界面，下载期间不方便退出、切换页面或继续工作。期望更新过程更无感：后台静默下载，下载完成后只在顶部或右上角提供“重启更新”入口。
+
+**决策**
+- 自动检查和手动检查发现更新后，不再显示居中的更新对话框。
+- 更新流程拆分为两步：`update.download()` 在后台执行；下载完成后，用户点击顶部工具栏“重启更新”再执行 `update.install()` 和 `relaunch()`。
+- 顶部入口放在源码编辑按钮左侧，保持低视觉权重，但用文字按钮明确表达动作。
+- 删除旧 `UpdateDialog` 组件和相关阻塞式下载样式，避免后续误用旧流程。
+- 下载失败不打断当前编辑；用户可以稍后在 Settings / 关于重新检查更新。
+
+**验证**
+- `npm test -- src/services/updateService.test.ts`
+- `npx tsc --noEmit`
+
+**影响**
+- 更新下载不再阻塞主界面，用户可以继续编辑、切换设置或关闭设置页。
+- 下载完成后的安装和重启仍由用户主动触发，避免在编辑中被突然打断。
+
 ### [DEC-041] - 2026-05-21 - HTML 自定义槽位改为文件导入，导出预览侧保持极简
 
 **背景**

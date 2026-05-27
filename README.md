@@ -91,7 +91,7 @@ npm run dev
 ```bash
 npm test
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 ```
 
 ## 构建

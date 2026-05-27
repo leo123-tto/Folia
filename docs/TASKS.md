@@ -46,7 +46,64 @@
 - **验收:** README 能同时服务普通下载用户和开发者；macOS 首次运行命令可直接复制；作者介绍比当前 GitHub 链接更完整；CHANGELOG 与工作日志同步记录。
 - **实现:** README 新增下载与安装、macOS 首次运行、开发环境、验证命令和构建分区；普通用户下载指向 GitHub Releases；macOS 首次运行提供 `xattr -dr com.apple.quarantine /Applications/Folia.app`；作者区补充杨卫薪律师身份、技术类纠纷 / 知识产权 / 数据与 AI 背景、GitHub 与微信；新增 `npm run tauri:build:local` 作为本地桌面打包命令，README 不再展示发布、签名、manifest 或 Tauri updater 内部说明；CHANGELOG 与 DECISIONS 已同步记录。
 
+### 工程结构整理
+
+#### ISS-113 根目录配置文件整理评估
+
+- **优先级:** P2
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 项目根目录存在多种 JS / JSON / TS 配置文件，视觉上偏杂乱；但其中部分文件属于 npm、Vite、TypeScript、ESLint、Playwright、Tauri 等工具默认发现入口，直接移动可能影响脚本、IDE、CI 或插件识别。
+- **建议实现:**
+  - 先列出根目录文件，区分必须留在根目录、可通过 `--config` / `-p` 指定移动、以及不建议移动的包管理和入口文件。
+  - 若决定迁移，可优先评估 ESLint、Playwright、构建脚本等低风险配置，统一更新 npm scripts、文档和 CI。
+  - `package.json`、lockfile、`index.html`、Tauri/Vite 核心入口暂不作为第一批迁移对象。
+- **验收:** 形成一份迁移清单；若实际移动配置文件，`npm test`、`npm run lint`、`npm run typecheck`、`npm run build` 和相关 E2E 均通过。
+- **实现:** 将 `eslint.config.js`、`playwright.config.ts`、`vite.config.ts`、`tsconfig.json`、`tsconfig.app.json`、`tsconfig.node.json` 迁移到 `config/`；`package.json` scripts 统一指定配置路径，并新增 `npm run typecheck`；根目录保留 `package.json`、lockfile、`index.html`、Tauri / 文档 / 源码目录等高频入口。
+
 ### 设置与导出体验
+
+#### ISS-112 导出设置页预览、自定义槽位与日文语言补充
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** Word / HTML 导出设置页仍有冗余说明和重复导入按钮；预览放大层过大，容易和设置页产生外观割裂；HTML 预设库右侧预览在设置页内占宽偏大，影响呼吸感；授权页不应出现购买、订阅或收费流程说明；界面语言需要新增日文。
+- **建议实现:**
+  - 内测授权页只说明“内测码用于开启本机额外自定义槽位”。
+  - Word / HTML 自定义槽位页移除顶部导入按钮，保留点击空槽位导入的主路径。
+  - 自定义槽位页减少说明文字，空槽位说明改为短标签。
+  - 设置页内预览框收窄，放大预览尺寸不超过设置弹窗尺度。
+  - `AppLocale` 新增 `ja-JP`，补齐当前 i18n 字典。
+- **验收:** 自定义槽位页无重复导入按钮；授权页无购买/订阅/收费文案；预览放大层更接近设置页大小且不挤压按钮；HTML 预设库右侧预览有足够间距；语言下拉可选择日文。
+- **实现:** 授权页说明收敛为“内测码只用于开启本机额外自定义槽位”；Word / HTML 自定义槽位页移除顶部导入按钮，空槽位点击导入文件，槽位列表隐藏冗长描述；设置页预览缩略框收窄，放大层限制到设置页尺度；`AppLocale` 增加 `ja-JP` 并补日文字典。
+
+#### ISS-111 Word 默认预设预览与真实导出继续复核
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 用户复验时仍感到几个 Word 默认预设的设置页预览和实际 `.docx` 导出存在差异，需要继续排查是否还有预览样式未按导出配置映射。
+- **建议实现:**
+  - 对照 `wordPreviewStyle`、设置页预览样本文档和 Word 导出 formatter/table handler。
+  - 优先排查标题、段落、列表、引用、代码块、表格、分割线等默认预设可见差异。
+  - 若差异来自设置页样本文档未覆盖，补充样本文档内容；若来自样式映射缺失，则补齐 CSS 变量和测试。
+- **验收:** 设置页单页纸预览覆盖更多与导出一致性相关元素；相关单元测试通过。
+- **实现:** 设置页 Word 预览样本文档补充引用、列表、代码块、行内代码和分割线；真实 `.docx` 表格导出补齐预设 `row_height` 与 `cell_margin`，让表格行高和单元格边距与预览 CSS 映射一致，并新增表格导出回归测试。
+
+#### ISS-110 自动更新改为后台下载与顶部重启入口
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 当前发现更新后会弹出居中的更新对话框，点击安装后下载进度继续占用界面，用户在下载期间不方便退出、切换或继续工作。用户希望更新下载更无感：后台静默下载，下载完成后再在顶部工具栏或右上角出现“重启更新”入口。
+- **建议实现:**
+  - 将 `downloadAndInstall()` 拆成 `download()` 与 `install()` 两步。
+  - 自动检查或手动检查发现更新后，直接进入后台下载，不显示阻塞弹窗。
+  - 下载完成后在 Toolbar 源码按钮左侧显示“重启更新”按钮；点击后安装并重启。
+  - 下载失败时不打断当前工作，可在顶部入口或设置页保留轻量错误状态，允许稍后重新检查。
+- **验收:** 发现更新后用户仍可继续编辑、切换设置和关闭页面；下载完成前没有模态阻塞；下载完成后顶部出现“重启更新”；点击后执行安装和重启。
+- **实现:** 自动检查和手动检查发现新版本后不再打开更新弹窗，`AppLayout` 直接调用 `update.download()` 后台下载；下载完成后在顶部工具栏源码按钮左侧显示“重启更新”，点击后执行 `update.install()` 并通过 process 插件重启。删除旧 `UpdateDialog` 阻塞界面，关于页手动检查只提示后台下载状态，下载失败不打断当前编辑。
 
 #### ISS-109 HTML 导出自定义槽位与预览说明继续减法
 
@@ -787,6 +844,8 @@
 
 ## 进度日志
 
+- **2026-05-22** 完成 ISS-113：根目录配置文件整理。ESLint、Playwright、Vite 和 TypeScript 配置集中迁移到 `config/`，日常命令通过 npm scripts 指向新配置路径，根目录只保留包管理文件、前端入口、桌面工程入口、文档和源码目录。验证：`npm test`、`npm run typecheck`、`npm run lint`、`npm run test:e2e -- --grep "settings modal"`、`npm run build`、`git diff --check` 均通过。
+- **2026-05-22** 完成 ISS-110 / ISS-111 / ISS-112：自动更新发现新版本后改为后台静默下载，不再显示阻塞式更新弹窗；下载完成后在顶部工具栏显示“重启更新”，点击后安装并重启。导出设置页继续减法，移除 Word / HTML 自定义槽位顶部重复导入按钮，收窄设置页预览和放大层，授权页不再展示购买、订阅或收费流程说明，并新增日文界面选项。Word `.docx` 表格导出补齐预设 `row_height` 与 `cell_margin`，让表格行高和单元格边距与纸张预览映射一致。验证：`npm test -- src/services/settingsService.test.ts src/services/word/table-handler.test.ts src/services/wordPreviewStyle.test.ts src/services/updateService.test.ts`、`npx tsc --noEmit`、`npm run lint`、`npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|license settings|Japanese|settings modal"`、`npm run build`、`git diff --check` 均通过。
 - **2026-05-21** 完成 ISS-109：HTML 导出自定义槽位移除设置页内手写 CSS 表单和粘贴导入区，改为导入 `.css` 样式文件或 `.json` 预设文件；Word / HTML 设置页预览侧只显示预设名，示例页说明压缩为“选中文本即可复制”。关于页图标与微信二维码确认通过本地资源打包，生产构建产物包含 `folia-icon` 与 `wechat-qr` 图片。验证：`npm test -- src/services/wechatPreviewService.test.ts src/services/wordPreviewStyle.test.ts src/services/word/parser.test.ts src/services/word/formatter.test.ts src/services/word/table-handler.test.ts`、`npx tsc --noEmit`、`npm run lint`、`npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|settings modal"`、`npm run build`、`git diff --check` 均通过。
 - **2026-05-21** 完成 ISS-108：README 补充普通用户下载入口、macOS 首次运行 quarantine 处理命令、开发 / 验证 / 构建说明，并参考 Legal Skills 项目完善作者介绍；复验后移除发布流程和 Tauri updater 内部说明。
 - **2026-05-21** 完成 ISS-106 / ISS-107：设置页首次打开改为预加载 + 完整 modal 骨架 fallback，并补轻量进入动效，避免只先变暗；Word / JSON 示例页和 HTML / CSS 示例页精简为只展示可选中示例文本，相关复制/导入/导出按钮回收到自定义槽位页。Word 导出修正首行缩进、列表/引用/代码块缩进、行内代码颜色和图片宽度约束，Word 纸张预览补齐列表、引用、代码块、行内代码、分割线、表格行高等样式映射。验证：`npm test -- src/services/wordPreviewStyle.test.ts src/services/word/parser.test.ts src/services/word/formatter.test.ts src/services/word/table-handler.test.ts`、`npx tsc --noEmit`、`npm run lint`、`npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|settings modal"`、`npm run build`、`git diff --check` 均通过。

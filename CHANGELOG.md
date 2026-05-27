@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - Settings / Word 导出新增示例 JSON 展开区和单页纸预览；点击预览纸张可打开放大视图，便于比较不同 Word 预设的版式效果。
 - Settings / Word 导出新增自定义预设槽位可视化：2 个常规槽位、空槽位导入入口、历史兼容提示和内测授权槽位提示。
 - HTML 表格稳定阅读预览新增“编辑源码”入口，用户可从只读阅读视图明确进入源码编辑。
-- 新增 `zh-CN` / `en-US` 语言设置基础，先覆盖设置导航、关于页、顶部栏和 Word 预览核心文案。
+- 新增 `zh-CN` / `en-US` / `ja-JP` 语言设置基础，先覆盖设置导航、关于页、顶部栏和 Word 预览核心文案。
 - 关于页新增 Folia 图标、项目地址、作者 GitHub 主页和微信二维码。
 - 新增默认浮动 TOC：文档有标题时显示左侧弱刻度，hover 或键盘聚焦展开标题列表，支持轨道点击固定和标题跳转。
 - 新增暗色模式，覆盖主界面、设置页、Word 预览外壳、Floating TOC 和编辑器容器。
@@ -36,10 +36,13 @@ All notable changes to this project will be documented in this file.
 - HTML 导出设置页收敛为同构二级页面：CSS 示例页使用全宽内容区，不再常驻文章预览；自定义槽位的导入 / 导出主路径统一表述为 CSS 预设。
 - Word / HTML 导出设置页的三级选项改为等宽铺满横条；顶部“删除/停用”入口移除，HTML 文章预览只在预设库显示并支持点击放大，内置 CSS 预设条目不再展示来源行。
 - Word / JSON 示例页和 HTML / CSS 示例页精简为只展示可选中示例文本；导入、复制、导出当前预设等动作保留在自定义槽位页。
-- HTML 导出自定义槽位页不再提供手写 CSS 表单；空槽位直接导入 CSS 预设文件。Word / HTML 设置页预览侧只显示预设名，不重复展示描述或点击提示。
+- Word / HTML 自定义槽位页移除顶部导入按钮，空槽位点击导入预设文件；槽位说明进一步压缩。HTML 导出自定义槽位页不再提供手写 CSS 表单，Word / HTML 设置页预览侧只显示预设名，不重复展示描述或点击提示。
+- 内测授权页文案收敛为“内测码只用于开启本机额外自定义槽位”。
+- Word / HTML 设置页预览缩略框收窄，放大预览弹层高度限制到设置页尺度，减少按钮和内容挤压。
 - Word / HTML 自定义槽位页的锁定入口统一改为“内测授权 / 输入内测码”，并跳转到授权页。
 - Markdown 主显示区继续扩大可视高度：WYSIWYG / Live Preview、普通预览和稳定 HTML table 阅读预览同步压缩上下留白，内容更贴近底部状态栏路径区域。
 - 自动检查更新恢复为可配置开关，默认开启；关于页只保留开关和手动检查更新入口，不再展示“启动后延迟检查”等技术说明。
+- 自动更新发现新版后改为后台下载；下载完成后在顶部栏显示“重启更新”，不再用下载弹窗阻塞编辑和页面切换。
 - 快捷键设置精简为打开、保存、另存为和导出 Word，移除暂未实际提供的命令面板占位。
 - Tauri capabilities 新增 `process:allow-restart`，保证安装更新后可以正常重启应用。
 - Tauri CSP 为 HTML 演示模式允许内联演示脚本，并保留本地图片、字体和媒体资源兜底；同目录 JS / CSS / 图片会优先内联进演示 iframe，外部网络连接继续受限。
@@ -52,6 +55,7 @@ All notable changes to this project will be documented in this file.
 - Settings 侧栏标题默认从 `Settings` 改为“设置”。
 - 自动更新运行时 endpoint 暂时收敛为 GitHub Releases `latest.json`；Gitee 继续作为 Release 产物同步镜像，但不再写入客户端静态更新源，避免 Gitee 不支持 GitHub 风格 `/releases/latest/download/...` 直链导致更新检查先命中无效地址。
 - `scripts/create-updater-manifest.mjs` 改为从签名文件自动生成全平台 `latest.json` / `latest-gitee.json`，并在缺少必需平台签名时失败发布。
+- 开发配置文件集中迁移到 `config/`，根目录仅保留包管理文件、前端入口和项目主目录；日常开发命令改为通过 npm scripts 指向配置路径。
 
 ### Fixed
 
@@ -66,7 +70,7 @@ All notable changes to this project will be documented in this file.
 - 打开或编辑文件后，文件名与 dirty 标记现在显示在标题栏视觉中心，不再跟随左侧文件按钮偏移。
 - 关于页不再显示更新源，只保留项目地址、软件介绍和作者区域。
 - 修复设置页第一次打开时只先显示变暗遮罩的问题：设置页会在空闲期预加载，懒加载等待时显示完整窗口骨架，并使用更连贯的进入动效。
-- 修复 Word 纸张预览与导出 Word 在首行缩进、列表/引用/代码块缩进、行内代码、分割线、表格行高和图片宽度上的部分不一致。
+- 修复 Word 纸张预览与导出 Word 在首行缩进、列表/引用/代码块缩进、行内代码、分割线、表格行高、表格单元格边距和图片宽度上的部分不一致。
 - 修复自动检查更新在启动延迟期间被关闭再打开后，本会话不会重新排期检查的问题。
 - 修复设置页 Word 导出预览放大时按 `Esc` 会直接关闭整个设置窗口的问题；现在优先关闭放大预览。
 - 修复 Word 导出遇到单行 HTML table 时可能吞掉表格后续段落的问题；连续紧凑 HTML 表格现在会作为独立文档节点处理。
