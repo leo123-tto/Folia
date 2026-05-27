@@ -1,6 +1,6 @@
 import {
   Table, TableRow, TableCell, Paragraph, TextRun,
-  WidthType, AlignmentType, VerticalAlign, BorderStyle,
+  WidthType, AlignmentType, VerticalAlign, BorderStyle, HeightRule,
   type IBorderOptions,
   type IRunOptions,
   type ITableBordersOptions,
@@ -55,13 +55,15 @@ export function createMarkdownTable(
       children: paddedRow.map((text, col) =>
         makeCell(text, colWidths[col], config, false),
       ),
+      height: tableRowHeight(config),
     });
   });
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    margins: tableCellMargins(config),
     rows: [
-      new TableRow({ children: headerCells, tableHeader: true }),
+      new TableRow({ children: headerCells, tableHeader: true, height: tableRowHeight(config) }),
       ...bodyRows,
     ],
     borders: tableBorders(config),
@@ -83,10 +85,12 @@ export function createHtmlTable(
   const rows = model.rows.map((row) => new TableRow({
     children: makeHtmlRowCells(row, model, colWidths, config),
     tableHeader: row.section === 'thead',
+    height: tableRowHeight(config),
   }));
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    margins: tableCellMargins(config),
     rows,
     borders: tableBorders(config),
   });
@@ -151,6 +155,27 @@ function calcColumnWidths(rows: string[][], colCount: number): number[] {
 
 function evenWidths(colCount: number): number[] {
   return Array(colCount).fill(100 / colCount);
+}
+
+function cmToTwip(cm: number): number {
+  return Math.round(cm * 567);
+}
+
+function tableCellMargins(config: PresetConfig) {
+  const margin = cmToTwip(config.table.cell_margin);
+  return {
+    top: margin,
+    bottom: margin,
+    left: margin,
+    right: margin,
+  };
+}
+
+function tableRowHeight(config: PresetConfig) {
+  return {
+    value: cmToTwip(config.table.row_height),
+    rule: HeightRule.ATLEAST,
+  };
 }
 
 function makeCell(
@@ -413,7 +438,8 @@ function tableBorders(config: PresetConfig): ITableBordersOptions {
 function emptyTable(config: PresetConfig): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [new TableRow({ children: [makeCell('', 100, config, false)] })],
+    margins: tableCellMargins(config),
+    rows: [new TableRow({ children: [makeCell('', 100, config, false)], height: tableRowHeight(config) })],
     borders: tableBorders(config),
   });
 }
