@@ -66,7 +66,7 @@ export type EditorFontFamily = 'IBM Plex Mono' | 'JetBrains Mono' | 'SF Mono' | 
 export type PreviewFontFamily = 'Iowan Old Style' | 'Georgia' | 'System Default';
 export type DefaultEncoding = 'UTF-8' | 'GBK' | 'GB18030';
 export type PreviewWidth = 640 | 680 | 720 | 800;
-export type AppLocale = 'zh-CN' | 'en-US';
+export type AppLocale = 'zh-CN' | 'en-US' | 'ja-JP';
 
 export interface AppSettings {
   // 通用
@@ -154,7 +154,7 @@ function normalizeCustomExportPresets(value: unknown): CustomPresetRegistry {
 }
 
 function normalizeLocale(value: unknown): AppLocale {
-  return value === 'en-US' ? 'en-US' : 'zh-CN';
+  return value === 'en-US' || value === 'ja-JP' ? value : 'zh-CN';
 }
 
 function normalizeWechatCustomCss(value: unknown): string {

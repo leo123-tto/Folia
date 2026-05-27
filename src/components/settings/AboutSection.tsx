@@ -44,7 +44,7 @@ export function AboutSection({ onUpdateAvailable }: AboutSectionProps) {
     const result = await checkForAppUpdate();
     if (result.status === 'available') {
       setCheckState('available');
-      setMessage(`${t('updateAvailable')} ${result.version}`);
+      setMessage(`${t('updateAvailable')} ${result.version} · ${t('updateDownloadingBackground')}`);
       onUpdateAvailable(result);
       return;
     }
