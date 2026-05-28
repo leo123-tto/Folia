@@ -14,6 +14,8 @@ export default defineConfig([
     'src-tauri/gen/**',
     'src-tauri/target/**',
     'test-results/**',
+    'website/.astro/**',
+    'website/dist/**',
   ]),
   {
     files: ['**/*.{ts,tsx}'],

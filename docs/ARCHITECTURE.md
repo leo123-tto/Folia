@@ -11,10 +11,13 @@
 | 源码编辑器 | CodeMirror 6 | @uiw/react-codemirror 4.25 |
 | 文件操作 | Tauri plugin-dialog / plugin-fs | |
 | 自动更新 | Tauri plugin-updater / plugin-process | 检查更新、安装后重启 |
+| 官方网站 | Astro | 独立静态站，GitHub Pages 发布 |
 
 ## 工程配置
 
 根目录只保留包管理文件、前端入口和桌面工程入口；ESLint、Playwright、Vite 与 TypeScript 配置集中放在 `config/`。日常开发统一通过 npm scripts 间接调用这些配置，避免开发者记忆具体配置路径。
+
+官方网站放在独立 `website/` 目录，使用 Astro 静态构建。根目录提供 `website:dev`、`website:build` 和 `website:preview` 作为转发脚本；官网依赖和构建产物不进入桌面应用的 Vite / Tauri 构建链路。
 
 ## 系统架构
 
@@ -193,10 +196,20 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 |------|------|
 | `public/vditor/dist/` | Vditor 本地 CDN 运行时资源（Lute、Mermaid、KaTeX、highlight.js 等）；已移除运行时不引用的 TS/type 声明和未压缩构建文件 |
 
+## 官方网站发布
+
+- 源码目录：`website/`
+- 本地开发：`npm run website:dev`
+- 静态构建：`npm run website:build`
+- 发布方式：`.github/workflows/deploy-website.yml` 在 `main` 分支更新官网相关文件后触发，使用 Astro 官方 GitHub Action 构建并上传 GitHub Pages artifact。
+- 默认地址：`https://cat-xierluo.github.io/Folia/`
+- 路径配置：`website/astro.config.mjs` 默认设置 `site = https://cat-xierluo.github.io`、`base = /Folia`。若后续改用自定义域名，应同步调整 `FOLIA_SITE_URL` / `FOLIA_BASE_PATH` 或配置文件默认值。
+
 ## 测试策略
 
 - `npm test`：Vitest 单元测试，覆盖设置迁移、HTML 清洗、Markdown 渲染特征探测。
 - `npm run test:e2e`：Playwright 端到端回归测试，启动 Vite 后验证冷启动、编辑切换、稳定 HTML 阅读预览、Word 预览和 HTML 表格渲染。
+- `npm run website:build`：Astro 官网静态构建，验证 GitHub Pages 发布产物可生成。
 - E2E 重点覆盖：普通 Markdown 默认显示即时渲染编辑器、源码编辑器按需加载且长文档可滚动、原生 HTML table 自动进入稳定阅读预览、结构化编辑器只替换目标 table block、Word 预览按需加载、右侧面板拖拽、Settings 固定尺寸、Floating TOC hover/固定/滚动高亮和复杂 HTML table 不横向溢出。
 
 ## Tauri 配置
