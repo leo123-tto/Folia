@@ -10,6 +10,7 @@ export default defineConfig([
     'dist/**',
     'coverage/**',
     'playwright-report/**',
+    '.worktrees/**',
     'public/vditor/dist/**',
     'src-tauri/gen/**',
     'src-tauri/target/**',

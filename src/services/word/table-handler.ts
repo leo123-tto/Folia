@@ -187,7 +187,7 @@ function makeCell(
   rowSpan = 1,
 ): TableCell {
   const fontCfg = isHeader ? config.table.header_font : config.table.body_font;
-  const runs = createFormattedRuns(text, config, { isTableHeader: isHeader });
+  const runs = createFormattedRuns(text, config, { tableRole: isHeader ? 'header' : 'body' });
 
   return new TableCell({
     columnSpan,
@@ -383,6 +383,10 @@ function textRun(
     underline: format.underline ? {} : undefined,
   };
 
+  if (fontCfg.color) {
+    options.color = fontCfg.color;
+  }
+
   if (format.code) {
     options.font = {
       eastAsia: config.inline_code.font,
@@ -402,6 +406,7 @@ function fallbackRun(text: string, config: PresetConfig, isHeader: boolean): Tex
     font: { eastAsia: fontCfg.name, ascii: fontCfg.ascii },
     size: ptToHalfPt(fontCfg.size),
     bold: isHeader,
+    color: fontCfg.color,
   });
 }
 

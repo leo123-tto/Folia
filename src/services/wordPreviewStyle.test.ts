@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getPreset } from './word/config';
 import { createWordPreviewStyle } from './wordPreviewStyle';
+import type { PresetConfig } from './word/types';
 
 describe('createWordPreviewStyle', () => {
   it('maps Word export preset values to paper preview CSS variables', () => {
@@ -30,5 +31,32 @@ describe('createWordPreviewStyle', () => {
     expect(style['--word-quote-bg']).toBe('#EAEAEA');
     expect(style['--word-quote-indent']).toBe('24pt');
     expect(style['--word-hr-content']).toMatch(/^"/);
+  });
+
+  it('maps optional font colors to paper preview CSS variables', () => {
+    const base = getPreset('legal');
+    const preset: PresetConfig = {
+      ...base,
+      fonts: {
+        default: { ...base.fonts.default, color: '333333' },
+      },
+      table: {
+        ...base.table,
+        header_font: { ...base.table.header_font, color: 'AA0000' },
+        body_font: { ...base.table.body_font, color: '008800' },
+      },
+      titles: {
+        ...base.titles,
+        level1: { ...base.titles.level1, color: '660000' },
+      },
+    };
+
+    const style = createWordPreviewStyle(preset);
+
+    expect(style['--word-font-color']).toBe('#333333');
+    expect(style['--word-table-header-color']).toBe('#AA0000');
+    expect(style['--word-table-body-color']).toBe('#008800');
+    expect(style['--word-heading-1-color']).toBe('#660000');
+    expect(style['--word-link-color']).toBe('#0563C1');
   });
 });

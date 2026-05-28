@@ -11,7 +11,6 @@ import {
   downloadAppUpdate,
   installDownloadedAppUpdate,
   type UpdateCheckResult,
-  type UpdateProgress,
   type UpdateSource,
 } from '../services/updateService';
 import { scheduleDelayedAutoUpdateCheck } from '../services/autoUpdateScheduler';
@@ -69,7 +68,7 @@ type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>;
 type RightPanelMode = 'none' | 'word' | 'wechat';
 type UpdateInstallState =
   | { phase: 'idle' }
-  | { phase: 'downloading'; source: UpdateSource; update: AvailableUpdate; progress: UpdateProgress | null }
+  | { phase: 'downloading'; source: UpdateSource; update: AvailableUpdate }
   | { phase: 'ready'; source: UpdateSource; update: AvailableUpdate }
   | { phase: 'installing'; source: UpdateSource; update: AvailableUpdate }
   | { phase: 'error'; source: UpdateSource; update?: AvailableUpdate; message: string };
@@ -287,14 +286,9 @@ export function AppLayout() {
     if (updateDownloadVersionRef.current === update.version) return;
 
     updateDownloadVersionRef.current = update.version;
-    setUpdateState({ phase: 'downloading', source, update, progress: null });
+    setUpdateState({ phase: 'downloading', source, update });
 
-    void downloadAppUpdate(update.update, (progress) => {
-      setUpdateState((current) => {
-        if (current.phase !== 'downloading' || current.update.version !== update.version) return current;
-        return { ...current, progress };
-      });
-    })
+    void downloadAppUpdate(update.update)
       .then(() => {
         setUpdateState((current) => {
           if (current.phase !== 'downloading' || current.update.version !== update.version) return current;

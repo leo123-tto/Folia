@@ -18,6 +18,7 @@ export interface TextFormat {
   strikethrough?: boolean;
   code?: boolean;
   math?: boolean;
+  link?: string;
 }
 
 /** 解析后的文本片段 */
