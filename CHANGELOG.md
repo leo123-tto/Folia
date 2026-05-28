@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.11]
 
+### Changed
+
+- Word 纸张预览保持快速 HTML/CSS 仿 Word 路线：当前 Markdown 直接渲染为 A4 纸张预览，导出预设驱动页边距、字体、标题、正文、表格和图片样式；真实 `.docx` 生成继续只服务 Word 导出。
+
 ### Fixed
 
-- 修复 LibreOffice 不可用时 Word 预览 HTML fallback 将表格正文单元格当作表头渲染的问题，长 HTML 表格预览恢复正常换行且不撑出面板。
+- 修复 Word 纸张预览中部分长表格正文单元格会按表头样式渲染的问题，长 HTML 表格预览恢复正常换行且不撑出面板。
 - 修复根目录官网脚本在未安装 `website/` 依赖时无法构建的问题；`website:dev`、`website:build`、`website:preview` 会按需补装官网依赖。
 
 ## [0.3.10]
@@ -24,7 +28,7 @@ All notable changes to this project will be documented in this file.
 - 官网首屏布局改为居中内容容器，产品预览作为下方居中视觉信号，两侧保留自然留白。
 - 官网文案从偏法律文档场景调整为面向知识工作者的复杂 Markdown 阅读、预览和导出定位。
 - ESLint 忽略 Astro 官网生成目录，避免 `website/.astro` 类型文件参与桌面应用源码检查。
-- Word 纸张预览改为先生成临时 `.docx`，优先通过本机 LibreOffice 后台命令导出 PDF 后嵌入预览；未安装 LibreOffice 或转换失败时再回落到 Mammoth HTML。设置页新增 LibreOffice 检测状态与下载入口。
+- Word 纸张预览继续使用导出预设驱动的 A4 纸张样式，补齐更多标题、正文、链接、表格和图片尺寸映射。
 - 配置文件（eslint、playwright、tsconfig、vite）从项目根目录移至 `config/` 子目录。
 - 更新服务将下载和安装拆分为独立 API，支持后台下载后再重启安装。
 - 导出预设设置面板精简布局：移除冗余描述文案，自定义预设使用紧凑模式。

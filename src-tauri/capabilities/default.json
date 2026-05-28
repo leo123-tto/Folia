@@ -19,7 +19,6 @@
     "fs:allow-write-text-file",
     "fs:allow-read-file",
     "fs:allow-write-file",
-    "opener:default",
     "process:allow-restart",
     "updater:default"
   ]

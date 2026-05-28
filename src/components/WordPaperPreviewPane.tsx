@@ -60,26 +60,6 @@ function makePage(container: HTMLDivElement, pageNumber: number): HTMLDivElement
   return content;
 }
 
-function renderNativePdfPreview(container: HTMLDivElement, pdfDataUrl: string, engine: string): void {
-  container.replaceChildren();
-
-  const shell = document.createElement('section');
-  shell.className = 'word-preview-native-shell';
-  shell.setAttribute('aria-label', `${engine} 预览`);
-
-  const label = document.createElement('div');
-  label.className = 'word-page-label';
-  label.textContent = engine;
-
-  const frame = document.createElement('iframe');
-  frame.className = 'word-preview-native-pdf';
-  frame.title = `${engine} PDF`;
-  frame.src = pdfDataUrl;
-
-  shell.append(label, frame);
-  container.append(shell);
-}
-
 function isTableElement(element: Element): element is HTMLTableElement {
   return element.tagName === 'TABLE';
 }
@@ -326,13 +306,8 @@ export function WordPaperPreviewPane({
     pagesEl.replaceChildren();
     makePage(pagesEl, 1);
 
-    void createWordPreviewArtifact(deferredSource, preset).then((artifact) => {
+    void createWordPreviewArtifact(deferredSource).then((artifact) => {
       if (cancelled || !measureRef.current || !pagesRef.current) return;
-      if (artifact.source === 'native-pdf') {
-        measureRef.current.replaceChildren();
-        renderNativePdfPreview(pagesRef.current, artifact.pdfDataUrl, artifact.engine);
-        return;
-      }
 
       measureRef.current.innerHTML = artifact.html;
       window.requestAnimationFrame(() => {

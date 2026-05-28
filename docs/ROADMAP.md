@@ -66,6 +66,7 @@
 - [x] 完善桌面壳体验：标题栏空白可拖动（原生 drag-region + 手动 `startDragging()` fallback）、拖拽文件到窗口可打开、主界面不显示应用名、默认窗口更小
 - [x] Word 预览按真实 A4 页面整体缩放，避免把页面压缩成右侧面板宽度导致版式失真
 - [x] Word 预览改为多页 A4 纸张栈，显示页码标签，右侧拖拽只改变缩放比例不改变页面版式
+- [x] Word 纸张预览回归快速 HTML/CSS 仿 Word 路线：导出预设驱动纸张样式，不再通过临时 `.docx` 或 PDF 中转显示
 - [x] 将“导出 Word”从一级工具栏移入 Word 预览面板，并在面板内提供当前导出预设选择器
 - [x] 新增 HTML 预览复制面板：当前 Markdown 可渲染为 HTML 文章预览，支持复制到公众号编辑器、内联样式 HTML 导出、内置主题预设和自定义 CSS 槽位
 - [x] 支持导入自定义 JSON 导出预设：内置预设继续保留，用户新增预设通过 JSON 模板导入，不在应用内暴露复杂调参表单
@@ -166,9 +167,8 @@
 - **2026-05-28**
   - 启动 Folia 官方网站建设：新增独立 Astro 静态站和 GitHub Pages 发布方案。
   - 继续修复 Word 预览与真实导出一致性：Markdown 链接导出为 Word 原生外部超链接，标题、正文和 Markdown 表格字体颜色按导出预设写入 `.docx`，纸张预览同步补齐链接、正文和表格颜色映射。
-  - Word 纸张预览第一阶段改为真实导出产物驱动：预览先通过 `markdownToDocx()` 生成临时 `.docx` Blob，再由 Mammoth 转为 HTML 并进入现有 A4 分页外壳，减少预览链路与导出链路分叉。
-  - Word 纸张预览继续补齐 LibreOffice 后台 renderer：Tauri 后端新增 `.docx` 转 PDF 预览命令，前端优先嵌入 LibreOffice headless 导出的 PDF；未安装 LibreOffice 或转换失败时保留 Mammoth HTML fallback，并在设置页提供下载入口。
   - 合并后回归修复：Mammoth HTML fallback 归一化表格语义，避免正文单元格按表头渲染；根目录官网脚本在缺少 `website/` 依赖时自动补装后继续构建。
+  - 产品路线复核后明确 Word 预览链路：右侧 Word 纸张预览使用 Markdown → Vditor HTML → CSS A4 纸张；`.docx` 生成继续只服务真实 Word 导出。
   - 发布 `v0.3.11` 回归修复版本：统一前端、Tauri、Rust crate 与 lockfile 版本，并将 Vite 大 chunk 提示记录为后续性能优化任务。
 
 - **2026-05-27**

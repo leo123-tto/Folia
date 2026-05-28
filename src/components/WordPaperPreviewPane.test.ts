@@ -2,7 +2,6 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPreset } from '../services/word/config';
 import { createWordPreviewArtifact } from '../services/wordPreviewArtifactService';
 import { paginateRenderedContent, WordPaperPreviewPane } from './WordPaperPreviewPane';
 
@@ -10,9 +9,8 @@ import { paginateRenderedContent, WordPaperPreviewPane } from './WordPaperPrevie
 
 vi.mock('../services/wordPreviewArtifactService', () => ({
   createWordPreviewArtifact: vi.fn().mockResolvedValue({
-    source: 'docx',
-    docxBlob: new Blob(['docx']),
-    html: '<h1 data-height="20">真实 Word 标题</h1><p data-height="20">真实 Word 正文</p>',
+    source: 'markdown-html',
+    html: '<h1 data-height="20">快速 Word 标题</h1><p data-height="20">快速 Word 正文</p>',
   }),
 }));
 
@@ -168,7 +166,7 @@ describe('WordPaperPreviewPane', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the paper preview from the generated docx artifact', async () => {
+  it('renders the paper preview from fast Markdown HTML', async () => {
     await act(async () => {
       root.render(React.createElement(WordPaperPreviewPane, {
         source: '# Markdown 标题',
@@ -182,14 +180,14 @@ describe('WordPaperPreviewPane', () => {
     });
     const pages = host.querySelector<HTMLElement>('.word-preview-pages');
     if (!pages) throw new Error('missing word preview pages');
-    await waitForText(pages, '真实 Word 标题');
+    await waitForText(pages, '快速 Word 标题');
 
-    expect(createWordPreviewArtifact).toHaveBeenCalledWith('# Markdown 标题', getPreset('legal'));
-    expect(pages.textContent).toContain('真实 Word 标题');
-    expect(pages.textContent).toContain('真实 Word 正文');
+    expect(createWordPreviewArtifact).toHaveBeenCalledWith('# Markdown 标题');
+    expect(pages.textContent).toContain('快速 Word 标题');
+    expect(pages.textContent).toContain('快速 Word 正文');
   });
 
-  it('does not regenerate the docx artifact when only preview width changes', async () => {
+  it('does not regenerate the preview HTML when only preview width changes', async () => {
     await act(async () => {
       root.render(React.createElement(WordPaperPreviewPane, {
         source: '# Markdown 标题',
@@ -216,31 +214,5 @@ describe('WordPaperPreviewPane', () => {
     });
 
     expect(createWordPreviewArtifact).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders a native office PDF preview when the artifact provides one', async () => {
-    vi.mocked(createWordPreviewArtifact).mockResolvedValueOnce({
-      source: 'native-pdf',
-      docxBlob: new Blob(['docx']),
-      engine: 'LibreOffice',
-      pdfDataUrl: 'data:application/pdf;base64,JVBERi0xLjQK',
-    });
-
-    await act(async () => {
-      root.render(React.createElement(WordPaperPreviewPane, {
-        source: '# Markdown 标题',
-        previewWidth: 460,
-        canExport: true,
-        onExportWord: () => undefined,
-        onClose: () => undefined,
-      }));
-      await flushTimers(320);
-      await flushTimers();
-    });
-
-    const frame = host.querySelector<HTMLIFrameElement>('.word-preview-native-pdf');
-    expect(frame).toBeTruthy();
-    expect(frame?.src).toBe('data:application/pdf;base64,JVBERi0xLjQK');
-    expect(host.querySelector('.word-preview-pages')?.textContent).not.toContain('真实 Word 标题');
   });
 });

@@ -2,10 +2,32 @@
 
 ## 第一部分：决策记录
 
+### [DEC-055] - 2026-05-28 - Word 纸张预览回归快速 CSS 仿 Word 路线
+
+**背景**
+用户复核外部转换器参与预览的路线后，认为它不符合 Folia 的轻量默认体验：预览变慢、依赖额外安装说明，且多套预览心智会增加用户负担。Folia 默认 Word 预览应直接给出接近真实 Word 的纸张观感。
+
+**决策**
+- 右侧 Word 纸张预览回归 Markdown → Vditor HTML → Word CSS 纸张预览；A4 尺寸、页边距、字体、标题、正文、表格、引用、代码块和图片规则继续由 Word 导出 `PresetConfig` 映射。
+- 右侧 Word 预览不生成临时 `.docx`，不嵌入 PDF，不在设置页暴露外部转换器检测入口。
+- 继续保留 `docx` npm 作为真实 `.docx` 导出引擎；继续保留 Mammoth 仅用于打开已有 `.docx` 文件时的 HTML 预览。
+
+**验证**
+- `npm test -- src/services/wordPreviewArtifactService.test.ts src/components/WordPaperPreviewPane.test.ts src/components/settings/PreviewSection.test.tsx`
+- `cd src-tauri && cargo check`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+
+**影响**
+- 用户打开 Word 预览时不再触发 DOCX 生成或外部转换器进程，预览保持快速、单一路线。
+- 导出 Word 的真实 `.docx` 生成能力不变。
+
 ### [DEC-054] - 2026-05-28 - 发布 v0.3.11 回归修复版本
 
 **背景**
-`v0.3.10` 已存在标签，合并后的 Word 真实预览与官网脚本回归修复需要作为新的补丁版本发布。当前修复已通过单元测试、E2E、类型检查、lint、桌面构建、官网构建和 Rust 测试；Vite 大 chunk 提示被记录为后续 ISS-121 性能优化，不阻塞本次发布。
+`v0.3.10` 已存在标签，合并后的 Word 预览与官网脚本回归修复需要作为新的补丁版本发布。当前修复已通过单元测试、E2E、类型检查、lint、桌面构建、官网构建和 Rust 测试；Vite 大 chunk 提示被记录为后续 ISS-121 性能优化，不阻塞本次发布。
 
 **决策**
 - 发布版本号使用 `0.3.11`，不复用已有 `v0.3.10` 标签。
@@ -17,12 +39,12 @@
 - 发布前重新执行前端单元测试、类型检查、lint、桌面构建、官网构建、Rust 测试、E2E 和 `git diff --check`。
 
 **影响**
-- 用户会收到一个聚焦的补丁版本：修复未安装 LibreOffice 时 Word 预览 fallback 表格正文样式错误，并改善官网脚本的新环境可用性。
+- 用户会收到一个聚焦的补丁版本：Word 纸张预览保持快速 CSS 路线，并改善官网脚本的新环境可用性。
 
 ### [DEC-053] - 2026-05-28 - 合并后修复 Word HTML fallback 表格语义与官网脚本依赖恢复
 
 **背景**
-合并官网与 Word 真实预览相关 PR 后，整体复验暴露两处回归：LibreOffice 不可用时，Word 预览回落到 Mammoth HTML 后可能把表格正文单元格输出为 `th`，导致正文按表头样式渲染且 E2E 找不到 `td`；同时根目录 `npm run website:build` 依赖 `website/node_modules` 已提前安装，新环境直接运行会失败。
+合并官网与 Word 预览相关 PR 后，整体复验暴露两处回归：Word 预览 HTML 中部分表格正文单元格可能被输出为 `th`，导致正文按表头样式渲染且 E2E 找不到 `td`；同时根目录 `npm run website:build` 依赖 `website/node_modules` 已提前安装，新环境直接运行会失败。
 
 **决策**
 - 在 `docxPreviewService` 中对清洗后的 Mammoth HTML 做表格结构归一化：保留显式 `thead` 和第一个隐式表头行，正文区域的 `th` 转为 `td`。
@@ -36,48 +58,8 @@
 - 临时移走 `website/node_modules` 后运行 `npm run website:build`，确认脚本自动安装官网依赖并完成构建；随后恢复本地依赖目录。
 
 **影响**
-- 未安装 LibreOffice 的环境中，Word 真实预览 fallback 的表格正文样式更接近实际正文，不再被表头样式污染。
+- Word 预览表格正文样式更接近实际正文，不再被表头样式污染。
 - 新开发环境可直接从根目录运行官网脚本，不需要先记住进入 `website/` 单独安装依赖。
-
-### [DEC-052] - 2026-05-28 - Word 预览优先使用 LibreOffice 后台 PDF 渲染
-
-**背景**
-用户希望本 PR 尽量一步到位，不只共享 `.docx` 产物，还要把更接近真实办公软件排版的 PDF 渲染纳入右侧预览。同时用户明确不希望弹出 Microsoft Word 或 WPS 做转换，而是采用后台命令方式。
-
-**决策**
-- 在 `markdownToDocx()` 生成临时 `.docx` Blob 后，前端优先调用 Tauri 命令 `render_word_preview_pdf`，由本机 LibreOffice `soffice --headless --convert-to pdf:writer_pdf_Export` 把 `.docx` 转为 PDF。
-- 右侧预览对 native 结果嵌入 PDF iframe；未检测到 LibreOffice、转换超时或导出失败时，自动回落到 DEC-051 的 Mammoth HTML 分页。
-- 不调用 Microsoft Word，不使用 WPS UI 自动化，也不弹出外部办公软件窗口。
-- 不把 LibreOffice 打包进 Folia。LibreOffice 是完整办公套件，体积、更新、安全补丁和跨平台安装差异都不适合作为 Folia bundle 的内置模块；Folia 只检测本机 `soffice`，设置页提供官方下载入口。
-- 每次转换使用独立临时 LibreOffice profile，并设置外部进程超时，避免本机 LibreOffice 状态或首次启动向导阻塞预览链路。
-
-**验证**
-- `npm test -- src/services/nativeWordPreviewService.test.ts src/services/wordPreviewArtifactService.test.ts src/components/WordPaperPreviewPane.test.ts`
-- `cd src-tauri && cargo test`
-
-**影响**
-- 安装 LibreOffice 的环境里，右侧 Word 预览将显示后台命令生成的 PDF，比 HTML 模拟更接近办公软件排版。
-- 未安装 LibreOffice 时仍能看到 HTML 预览，不影响导出 Word；用户可在设置页打开 LibreOffice 下载页。
-
-### [DEC-051] - 2026-05-28 - Word 预览改为导出产物驱动
-
-**背景**
-用户明确希望右侧 Word 纸张预览尽量做到“最终 Word 导出什么样，预览就是什么样”，而不是继续靠 CSS 逐项追平字体、颜色、行距和表格差异。旧链路用 Vditor 将 Markdown 渲染为 HTML，再用 CSS 模拟 Word 预设；它启动轻，但无法保证与真实 `.docx` 产物一致。
-
-**决策**
-- 第一阶段把 Word 预览源头改为真实导出产物：内容和预设变化后，先通过 `markdownToDocx()` 生成临时 `.docx` Blob。
-- 预览 HTML 不再从 Markdown/Vditor 生成，而是由该 `.docx` Blob 经 `docxPreviewService` / Mammoth 转出，再交给现有 A4 纸张分页外壳展示。
-- 第一阶段先不引入 LibreOffice / Word / WPS / PDF 图片转换依赖，避免增加安装体积、平台差异和启动阻塞；随后 DEC-052 在同一 PR 中补入 LibreOffice PDF renderer，并继续保留 HTML fallback。
-- `docxPreviewService` 同时传入 `buffer` 与 `arrayBuffer`，兼容 Mammoth 在 Node/Vitest 与浏览器打包环境中的输入差异。
-
-**验证**
-- `npm test -- src/services/wordPreviewArtifactService.test.ts`
-- `npm test -- src/components/WordPaperPreviewPane.test.ts`
-- `npm test -- src/services/wordPreviewArtifactService.test.ts src/components/WordPaperPreviewPane.test.ts`
-
-**影响**
-- 右侧 Word 预览现在和导出使用同一套 `.docx` 生成链路，避免“预览从 Markdown 走一套、导出从 Word 走另一套”的架构分叉。
-- DEC-051 的 HTML artifact 路径仍作为 LibreOffice PDF renderer 不可用时的 fallback。
 
 ### [DEC-050] - 2026-05-28 - Word 导出链接与颜色映射回归
 

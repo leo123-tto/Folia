@@ -143,31 +143,31 @@
 
 ### 设置与导出体验
 
+#### ISS-123 Word 纸张预览回归快速 CSS 仿 Word 路线
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 用户复核后认为外部转换器参与预览会让轻量预览变慢，也增加额外安装、检测和 fallback 说明成本；Folia 默认预览应快速、清晰、接近真实 Word，而不是提供多套预览心智。
+- **建议实现:**
+  - 右侧 Word 预览改回 Markdown → HTML → Word CSS 纸张预览，由同一套 Word 导出预设参数驱动 A4、页边距、字体、标题、正文、表格、引用和代码块样式。
+  - 右侧 Word 预览不生成临时 `.docx`，不嵌入 PDF，不保留外部转换器分支。
+  - 保留 `docx` npm 作为真实 `.docx` 导出引擎；保留 Mammoth 仅用于打开已有 `.docx` 文件时预览。
+  - 设置页不展示外部转换器检测状态和下载入口，避免用户误解为 Word 导出依赖。
+- **验收:** 打开右侧 Word 预览不触发 `markdownToDocx()` 或外部转换器；预览仍按当前 Word 预设展示 A4 纸张样式并支持分页；导出 Word 仍可直接生成 `.docx`；相关单元测试、类型检查和构建通过。
+- **实现:** `wordPreviewArtifactService` 改为按需加载 Vditor，将当前 Markdown 直接渲染为清洗后的 HTML；`WordPaperPreviewPane` 继续用导出预设映射出的 CSS 纸张变量分页和缩放，不再接收 PDF artifact；删除外部转换器服务、Tauri native preview 命令、设置入口和 opener 依赖。Mammoth / `docxPreviewService` 保留为打开已有 `.docx` 文件时的预览能力。已通过针对性测试、全量单元测试、类型检查、lint、生产构建和 `cargo check`。
+
 #### ISS-120 合并后 Word 预览 fallback 与官网脚本回归修复
 
 - **优先级:** P1
 - **类型:** L1
 - **状态:** 已完成，待复验。
-- **问题:** 合并官网与 Word 真实预览相关 PR 后，整体复验发现两处回归：未安装 `website/` 依赖时从根目录执行官网构建会失败；LibreOffice 不可用时 Word 预览回落到 Mammoth HTML 后，部分表格正文单元格被输出为表头单元格，导致长 HTML 表格的正文样式与换行断言失效。
+- **问题:** 合并官网与 Word 预览相关 PR 后，整体复验发现两处回归：未安装 `website/` 依赖时从根目录执行官网构建会失败；Word 预览 HTML 中部分表格正文单元格被输出为表头单元格，导致长 HTML 表格的正文样式与换行断言失效。
 - **建议实现:**
   - 为 Mammoth HTML fallback 增加表格语义归一化，保留真实表头，正文区域的 `th` 转回 `td`。
   - 根目录官网脚本在缺少 `website/node_modules` 时按需安装官网依赖，再执行 dev/build/preview。
 - **验收:** 长 HTML evidence table 的 Word 预览 E2E 通过；全量测试与构建通过；未预装 `website/` 依赖时 `npm run website:build` 可自动恢复并完成构建。
 - **实现:** `docxPreviewService` 在 Mammoth HTML 清洗后归一化表格结构：保留显式 `thead` / 首个隐式表头行，将正文行的 `th` 转为 `td`，并修复 thead-only 输出中正文行未进入 `tbody` 的情况；新增 `scripts/run-website.mjs` 作为根目录官网脚本转发入口，缺少 Astro 依赖时自动执行 `npm install --prefix website` 后继续运行。
-
-#### ISS-119 Word 预览改为真实导出产物驱动
-
-- **优先级:** P1
-- **类型:** L2
-- **状态:** 已实现，待复验。
-- **问题:** 用户希望 Word 纸张预览不只是继续减少字体、颜色、行距等局部差异，而是尽量做到“最终 Word 导出什么样，预览就是什么样”。旧预览由 Markdown 经 Vditor 渲染为 HTML，再用 CSS 模拟 `PresetConfig`；这种网页模拟无法完全复现 Word / WPS 的排版引擎、分页、字体替换、列表、表格布局和兼容细节。
-- **建议实现:**
-  - 将右侧 Word 预览从“Markdown + CSS 模拟”升级为“真实导出产物驱动”：编辑内容先走同一套 `markdownToDocx()` 导出链路生成临时 `.docx`，预览再基于该 `.docx` 生成可视结果。
-  - 第一阶段评估两条路线：A. `.docx` 转 PDF / 图片后按页展示，保真度最高但需要本机转换能力；B. 解析 `.docx` XML 生成预览 HTML，启动轻但仍需复刻 Word layout。
-  - 保留当前纸张分页外壳，避免输入时每次都阻塞主编辑区。
-  - 增加缓存与 debounce：内容或预设变化后延迟生成真实预览，导出按钮复用同一套 `.docx` 生成逻辑，避免预览和导出走两套源数据。
-- **验收:** 同一份 Markdown 的右侧预览与点击导出的 `.docx` 来自同一生成产物；页数、分页、标题、正文、列表、表格、链接、页边距和图片尺寸明显贴近 Word / WPS 打开效果；无转换能力时有清晰 fallback，不影响正常导出。
-- **实现:** 已新增 `wordPreviewArtifactService` 和 `nativeWordPreviewService`，右侧 Word 预览在 debounce 后先调用 `markdownToDocx()` 生成临时 `.docx` Blob；Tauri 后端只通过本机 LibreOffice `soffice --headless --convert-to pdf:writer_pdf_Export` 后台导出 PDF 并返回给前端嵌入预览，不调用 Microsoft Word / WPS。未检测到 LibreOffice 或转换失败时，复用 `docxPreviewService` / Mammoth 转为已清洗 HTML，并交给现有 A4 纸张分页外壳展示；设置页新增 LibreOffice 检测状态与官方下载入口。`docxPreviewService` 同时兼容 Mammoth 在浏览器和 Node/Vitest 下的 `arrayBuffer` / `buffer` 输入差异。
 
 #### ISS-116 Word 导出链接转换与预览/导出颜色一致性
 
