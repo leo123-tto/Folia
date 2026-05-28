@@ -32,6 +32,20 @@
 
 ### 文档与发布说明
 
+#### ISS-115 官方网站与 GitHub Pages 发布方案
+
+- **优先级:** P2
+- **类型:** L2
+- **状态:** 已完成，待复验。
+- **问题:** Folia 目前缺少面向普通用户的官方网站。用户希望参考常见开源项目做法，用 GitHub Pages / `github.io` 提供项目介绍、下载入口、截图展示、功能说明和文档入口。
+- **建议实现:**
+  - 官网采用独立 `website/` Astro 静态站，避免影响现有 Tauri / Vite 桌面应用构建。
+  - 首页聚焦 Folia 名称、Markdown 阅读与 Word 导出定位、复杂 HTML 表格能力、下载入口和 GitHub 仓库入口。
+  - 配置 GitHub Actions 自动构建并发布到 GitHub Pages，默认 URL 为 `https://cat-xierluo.github.io/Folia/`。
+  - 根目录提供 `website:dev`、`website:build` 和 `website:preview` 脚本。
+- **验收:** 访问 GitHub Pages URL 可打开官网；页面包含下载、功能、工作流和 GitHub 仓库入口；`npm run website:build` 通过；README、CHANGELOG、ARCHITECTURE、ROADMAP、DESIGN 和 DECISIONS 同步记录。
+- **实现:** 新增 `website/` Astro 单页官网，包含首屏品牌与产品预览、项目定位、核心能力、使用流程和下载入口；新增 GitHub Pages 工作流；根目录新增 `website:dev`、`website:build`、`website:preview` 脚本；ESLint 忽略 Astro 生成目录；已完成静态构建、桌面/移动截图检查、lint、typecheck、单元测试和空白检查。
+
 #### ISS-108 README 下载、首次运行、开发构建与作者信息完善
 
 - **优先级:** P1

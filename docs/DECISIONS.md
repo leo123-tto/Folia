@@ -2,6 +2,33 @@
 
 ## 第一部分：决策记录
 
+### [DEC-046] - 2026-05-28 - 官方网站采用独立 Astro 静态站
+
+**背景**
+用户希望为 Folia 建设官方项目网站，并参考常见开源项目使用 `github.io` 的方式发布。官网需要服务普通下载用户，而不是只作为开发者 README 的补充。
+
+**决策**
+- 新增独立 `website/` Astro 静态站，不复用或改动桌面应用现有 Vite 配置，避免影响 Tauri 应用构建。
+- 官网第一版采用单页产品站结构：首屏品牌与界面预览、项目定位、核心能力、使用流程、下载入口和 GitHub 仓库入口。
+- GitHub Pages 默认发布地址为 `https://cat-xierluo.github.io/Folia/`，Astro 配置 `site` 和 `base` 以适配项目页路径。
+- 新增 `.github/workflows/deploy-website.yml`，使用官方 Astro GitHub Action 构建 `website/` 并发布 Pages artifact。
+- 根目录只增加转发脚本 `website:dev`、`website:build`、`website:preview`，桌面应用原有脚本保持不变。
+
+**验证**
+- `npm install --prefix website --package-lock=true`
+- `npm run website:build`
+- 本地 Astro 预览：`http://127.0.0.1:4321/Folia/`
+- 桌面截图：`test-results/website-desktop.png`
+- 移动截图：`test-results/website-mobile.png`
+- `npm run lint`
+- `npm run typecheck`
+- `npm test`
+- `git diff --check`
+
+**影响**
+- Folia 获得独立官网发布通道，后续可在不影响桌面应用的情况下扩展截图、文档、自定义域名或下载说明。
+- GitHub 仓库需要在 Settings / Pages 中选择 GitHub Actions 作为 Pages 发布源。
+
 ### [DEC-044] - 2026-05-22 - 根目录配置文件集中到 config
 
 **背景**

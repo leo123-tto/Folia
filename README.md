@@ -8,6 +8,11 @@
 
 稳定预览包含 HTML 表格的 Markdown 文档，并支持 Word 纸张预览与导出。
 
+## 官方网站
+
+- 官网：[https://cat-xierluo.github.io/Folia/](https://cat-xierluo.github.io/Folia/)
+- 源码：[https://github.com/cat-xierluo/Folia](https://github.com/cat-xierluo/Folia)
+
 ## 下载与安装
 
 普通用户建议直接从 [GitHub Releases](https://github.com/cat-xierluo/Folia/releases/latest) 下载最新版本。
@@ -86,12 +91,19 @@ npm run tauri dev
 npm run dev
 ```
 
+调试官方静态网站：
+
+```bash
+npm run website:dev
+```
+
 常用验证命令：
 
 ```bash
 npm test
 npm run lint
 npm run typecheck
+npm run website:build
 ```
 
 ## 构建

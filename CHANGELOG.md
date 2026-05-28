@@ -6,12 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- 新增 `website/` Astro 官方静态网站，提供项目介绍、功能展示、下载入口和 GitHub Pages 自动发布流程。
 - 工具栏新增内联更新按钮：发现可用更新后自动后台下载，下载完成后在工具栏显示重启按钮，无需弹窗确认。
 - 新增日语 (ja-JP) 完整语言支持，覆盖设置、工具栏、更新等全部文案。
 - Word 导出表格支持行高 (HeightRule) 和单元格边距 (cell margins)，从预设配置读取。
 
 ### Changed
 
+- ESLint 忽略 Astro 官网生成目录，避免 `website/.astro` 类型文件参与桌面应用源码检查。
 - 配置文件（eslint、playwright、tsconfig、vite）从项目根目录移至 `config/` 子目录。
 - 更新服务将下载和安装拆分为独立 API，支持后台下载后再重启安装。
 - 导出预设设置面板精简布局：移除冗余描述文案，自定义预设使用紧凑模式。

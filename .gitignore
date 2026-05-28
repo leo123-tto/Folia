@@ -35,6 +35,10 @@ src-tauri/target/
 # Test artifacts
 test-results/
 
+# Astro website
+website/.astro/
+website/dist/
+
 # Local AI working context
 docs/DECISIONS.md
 docs/TASKS.md
