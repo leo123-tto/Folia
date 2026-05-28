@@ -23,6 +23,11 @@ All notable changes to this project will be documented in this file.
 - 关于页更新提示增加后台下载状态文案。
 - 许可证描述文案精简。
 
+### Fixed
+
+- 修复 Word 导出未把 Markdown 链接转换为 Word 原生超链接的问题；右侧 Word 纸张预览同步补齐链接颜色、正文颜色和表格字体颜色映射。
+- 修复自动更新后台下载期间仍订阅进度事件、导致主界面频繁重绘和卡顿的问题；下载完成前不显示重启入口，完成后才在顶部栏提示重启更新。
+
 ### Removed
 
 - 移除 `UpdateDialog` 弹窗组件，更新流程改为工具栏内联状态机。

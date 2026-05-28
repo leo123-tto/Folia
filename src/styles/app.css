@@ -1265,7 +1265,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 1px 2px var(--paper-shadow);
-  color: var(--fg);
+  color: var(--word-font-color);
   font-family: var(--word-font-family);
   font-size: var(--word-font-size);
   line-height: var(--word-line-height);
@@ -1361,7 +1361,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   padding: 0 0 0 var(--word-quote-indent);
   border: none;
   background: var(--word-quote-bg);
-  color: var(--fg);
+  color: var(--word-font-color);
   font-size: var(--word-quote-font-size);
   line-height: var(--word-quote-line-height);
 }
@@ -1406,6 +1406,13 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   font-size: var(--word-inline-code-font-size);
 }
 
+.word-paper-content a,
+.word-paper-content.vditor-reset a {
+  color: var(--word-link-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .word-paper-content hr,
 .word-paper-content.vditor-reset hr {
   height: auto;
@@ -1431,6 +1438,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   font-size: var(--word-table-font-size);
   line-height: var(--word-table-line-height);
   font-family: var(--word-table-body-font-family);
+  color: var(--word-table-body-color);
 }
 
 .word-paper-content tr,
@@ -1455,6 +1463,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   font-family: var(--word-table-header-font-family);
   font-size: var(--word-table-header-font-size);
   font-weight: 700;
+  color: var(--word-table-header-color);
   text-align: center;
 }
 

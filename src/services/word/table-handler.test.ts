@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET_ID, getPreset } from './config';
-import { createHtmlTable, parseMarkdownTableRows } from './table-handler';
+import { createHtmlTable, createMarkdownTable, parseMarkdownTableRows } from './table-handler';
+import type { PresetConfig } from './types';
 
 describe('parseMarkdownTableRows', () => {
   it('drops alignment separator rows and keeps stable columns', () => {
@@ -106,6 +107,38 @@ describe('createHtmlTable', () => {
   });
 });
 
+describe('createMarkdownTable', () => {
+  it('uses table header and body font settings for markdown tables', () => {
+    const base = getPreset(DEFAULT_PRESET_ID);
+    const preset: PresetConfig = {
+      ...base,
+      table: {
+        ...base.table,
+        header_font: { name: '黑体', ascii: 'Arial', size: 10.5, color: 'AA0000' },
+        body_font: { name: '仿宋_GB2312', ascii: 'Times New Roman', size: 10.5, color: '008800' },
+      },
+    };
+
+    const table = createMarkdownTable([
+      '| 事项 | 说明 |',
+      '| --- | --- |',
+      '| 链接 | 内容 |',
+    ], preset);
+
+    const rows = getDocxRows(table);
+    const [headerCell] = getDocxRowCells(rows[0]);
+    const [bodyCell] = getDocxRowCells(rows[1]);
+
+    expect(findDocxAttribute(findDocxNode(headerCell, 'w:rFonts'), 'w:eastAsia')).toBe('黑体');
+    expect(findDocxAttribute(findDocxNode(headerCell, 'w:rFonts'), 'w:ascii')).toBe('Arial');
+    expect(findDocxAttribute(findDocxNode(headerCell, 'w:color'), 'w:val')).toBe('AA0000');
+    expect(findDocxNode(headerCell, 'w:b')).toBeTruthy();
+    expect(findDocxAttribute(findDocxNode(bodyCell, 'w:rFonts'), 'w:eastAsia')).toBe('仿宋_GB2312');
+    expect(findDocxAttribute(findDocxNode(bodyCell, 'w:rFonts'), 'w:ascii')).toBe('Times New Roman');
+    expect(findDocxAttribute(findDocxNode(bodyCell, 'w:color'), 'w:val')).toBe('008800');
+  });
+});
+
 interface DocxNode {
   rootKey?: string;
   root?: DocxNode[];
@@ -144,6 +177,7 @@ function findDocxAttribute(node: unknown, keyName: string): unknown {
 
   if (current.rootKey === '_attr' && current.root && typeof current.root === 'object' && !Array.isArray(current.root)) {
     for (const [name, raw] of Object.entries(current.root as Record<string, unknown>)) {
+      if (name === keyName.replace(/^w:/, '') && (raw === null || typeof raw !== 'object')) return raw;
       if (!raw || typeof raw !== 'object') continue;
       const attr = raw as { key?: string; value?: unknown };
       if (name === keyName || attr.key === keyName) return attr.value;

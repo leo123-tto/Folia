@@ -2,6 +2,26 @@
 
 ## 第一部分：决策记录
 
+### [DEC-050] - 2026-05-28 - Word 导出链接与颜色映射回归
+
+**背景**
+用户提供 `260528 智能体专利申请清单_V2.docx` 复验 Word 导出效果，指出右侧 Word 纸张预览与实际导出的 `.docx` 在字体、颜色和超链接上仍有明显差异。检查样例后确认，协作来源仍以 Markdown `[标题](URL)` 原文进入 Word 文档，没有生成原生超链接关系；导出 formatter 也没有把可选字体颜色和表格字体配置完整写入 run。
+
+**决策**
+- 在 Word 内联 formatter 中解析 Markdown 链接，并输出 `docx` 的 `ExternalHyperlink`，链接文本使用 Word 常见蓝色下划线样式。
+- 标题 run 显式应用 `titles.levelN.color` 和 `bold`；正文 run 应用 `fonts.default.color`；Markdown 表格单元格使用 `table.header_font` / `table.body_font` 的字体、字号和颜色。
+- 纸张预览继续以 `PresetConfig` 为单一来源，新增正文、链接、表格表头和表格正文颜色 CSS 变量，避免预览和导出再次分叉。
+
+**验证**
+- `npm test -- src/services/word/formatter.test.ts src/services/word/table-handler.test.ts src/services/wordPreviewStyle.test.ts`
+- `npm run typecheck`
+- `npm test -- src/services/word/parser.test.ts src/services/word/formatter.test.ts src/services/word/table-handler.test.ts src/services/wordPreviewStyle.test.ts src/components/WordPaperPreviewPane.test.ts`
+- 本地 Vite 页面打开并切换 Word 预览，确认全局界面未被 Word 预览颜色变量污染。
+
+**影响**
+- Markdown 链接导出的 `.docx` 中将成为可点击外部链接，显示文本不再包含 URL 原文。
+- 自定义 Word 预设中的正文、标题和 Markdown 表格字体颜色在纸张预览与真实导出中保持一致。
+
 ### [DEC-049] - 2026-05-28 - 官网 favicon 使用应用自身 Logo
 
 **背景**
@@ -88,6 +108,24 @@
 **影响**
 - Folia 获得独立官网发布通道，后续可在不影响桌面应用的情况下扩展截图、文档、自定义域名或下载说明。
 - GitHub 仓库需要在 Settings / Pages 中选择 GitHub Actions 作为 Pages 发布源。
+
+### [DEC-045] - 2026-05-27 - 自动更新后台下载不再订阅进度事件
+
+**背景**
+用户复验自动更新后指出，当前检测到更新后点击更新下载仍会让页面像被阻塞。代码虽已去掉更新弹窗，并将 `download()` 与 `install()` 拆分，但主界面仍在下载期间订阅每个进度事件并写入 React 状态；大更新包会产生大量重绘。
+
+**决策**
+- 自动检查或手动检查命中新版本后，只启动后台静默下载，不把下载进度同步到主界面状态。
+- 下载完成前不显示下载入口或进度 UI；下载完成后才在顶部右侧显示“重启更新”。
+- “重启更新”只执行已下载更新的 `install()` 与 `relaunch()`，不重新下载。
+- 保留 `downloadAppUpdate()` 的进度回调能力，供未来需要显示下载进度的非主界面场景复用；当前主流程不订阅。
+
+**验证**
+- `npm test -- src/app/AppLayout.test.tsx`
+
+**影响**
+- 更新包下载期间不会因高频进度事件触发主界面反复重绘，编辑和设置切换更接近真正的后台下载。
+- 用户只在更新已准备好时看到安装重启入口。
 
 ### [DEC-044] - 2026-05-22 - 根目录配置文件集中到 config
 

@@ -1,9 +1,16 @@
 import type { ParsedTextPart, PresetConfig } from './types';
-import { TextRun, AlignmentType } from 'docx';
-import type { IRunOptions } from 'docx';
+import { TextRun, AlignmentType, ExternalHyperlink } from 'docx';
+import type { IRunOptions, ParagraphChild } from 'docx';
 
 type MutableRunOptions = {
   -readonly [K in keyof IRunOptions]: IRunOptions[K];
+};
+
+type FormattedRunOptions = {
+  titleLevel?: number;
+  isQuote?: boolean;
+  isTableHeader?: boolean;
+  tableRole?: 'header' | 'body';
 };
 
 /** Convert points to half-points (docx uses half-points for font sizes). */
@@ -78,6 +85,11 @@ export function parseFormattedText(text: string): ParsedTextPart[] {
     [
       /(?<open>(?:\*\*\*|___))(?<body>.+?)\1/,
       (m) => ({ text: m.groups!.body, formats: { bold: true, italic: true } }),
+    ],
+    // markdown link
+    [
+      /(?<!!)\[(?<body>[^\]\n]+)\]\((?<url>[^)\s]+)\)/,
+      (m) => ({ text: m.groups!.body, formats: { link: m.groups!.url } }),
     ],
     // bold (double)
     [
@@ -157,8 +169,8 @@ export function parseFormattedText(text: string): ParsedTextPart[] {
 export function createFormattedRuns(
   text: string,
   config: PresetConfig,
-  options?: { titleLevel?: number; isQuote?: boolean; isTableHeader?: boolean },
-): TextRun[] {
+  options?: FormattedRunOptions,
+): ParagraphChild[] {
   let processed = text;
   if (config.quotes.convert_to_chinese) {
     processed = convertQuotesToChinese(processed);
@@ -167,14 +179,25 @@ export function createFormattedRuns(
   const parts = parseFormattedText(processed);
 
   return parts.map((part) => {
-    const font = config.fonts.default;
+    let font = config.fonts.default;
     let fontSize = font.size;
+    let color = font.color;
+
+    const tableRole = options?.tableRole ?? (options?.isTableHeader ? 'header' : undefined);
+    if (tableRole) {
+      font = tableRole === 'header'
+        ? config.table.header_font
+        : config.table.body_font;
+      fontSize = font.size;
+      color = font.color;
+    }
 
     if (options?.titleLevel) {
       const headingKey = `level${options.titleLevel}` as keyof typeof config.titles;
       const headingConf = config.titles[headingKey];
       if (headingConf) {
         fontSize = headingConf.size;
+        color = headingConf.color ?? color;
       }
     }
 
@@ -194,6 +217,22 @@ export function createFormattedRuns(
       },
       size: ptToHalfPt(fontSize),
     };
+
+    if (color) {
+      runOptions.color = color;
+    }
+
+    if (options?.titleLevel) {
+      const headingKey = `level${options.titleLevel}` as keyof typeof config.titles;
+      const headingConf = config.titles[headingKey];
+      if (headingConf?.bold) {
+        runOptions.bold = true;
+      }
+    }
+
+    if (tableRole === 'header') {
+      runOptions.bold = true;
+    }
 
     if (part.formats.bold) {
       runOptions.bold = true;
@@ -229,6 +268,19 @@ export function createFormattedRuns(
         runOptions.italics = true;
       }
       runOptions.color = mc.color;
+    }
+
+    if (part.formats.link) {
+      return new ExternalHyperlink({
+        link: part.formats.link,
+        children: [
+          new TextRun({
+            ...runOptions,
+            color: '0563C1',
+            underline: {},
+          }),
+        ],
+      });
     }
 
     return new TextRun(runOptions);
