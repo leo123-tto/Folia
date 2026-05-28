@@ -2,6 +2,43 @@
 
 ## 第一部分：决策记录
 
+### [DEC-054] - 2026-05-28 - 发布 v0.3.11 回归修复版本
+
+**背景**
+`v0.3.10` 已存在标签，合并后的 Word 真实预览与官网脚本回归修复需要作为新的补丁版本发布。当前修复已通过单元测试、E2E、类型检查、lint、桌面构建、官网构建和 Rust 测试；Vite 大 chunk 提示被记录为后续 ISS-121 性能优化，不阻塞本次发布。
+
+**决策**
+- 发布版本号使用 `0.3.11`，不复用已有 `v0.3.10` 标签。
+- 同步更新 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 和 `src-tauri/Cargo.lock` 中 Folia 自身版本。
+- `CHANGELOG.md` 新增 `0.3.11` 小版本说明，仅包含本次回归修复。
+- 推送 `main` 后创建并推送 `v0.3.11` 标签，由现有 GitHub Actions Release workflow 构建多平台产物并生成 `latest.json`。
+
+**验证**
+- 发布前重新执行前端单元测试、类型检查、lint、桌面构建、官网构建、Rust 测试、E2E 和 `git diff --check`。
+
+**影响**
+- 用户会收到一个聚焦的补丁版本：修复未安装 LibreOffice 时 Word 预览 fallback 表格正文样式错误，并改善官网脚本的新环境可用性。
+
+### [DEC-053] - 2026-05-28 - 合并后修复 Word HTML fallback 表格语义与官网脚本依赖恢复
+
+**背景**
+合并官网与 Word 真实预览相关 PR 后，整体复验暴露两处回归：LibreOffice 不可用时，Word 预览回落到 Mammoth HTML 后可能把表格正文单元格输出为 `th`，导致正文按表头样式渲染且 E2E 找不到 `td`；同时根目录 `npm run website:build` 依赖 `website/node_modules` 已提前安装，新环境直接运行会失败。
+
+**决策**
+- 在 `docxPreviewService` 中对清洗后的 Mammoth HTML 做表格结构归一化：保留显式 `thead` 和第一个隐式表头行，正文区域的 `th` 转为 `td`。
+- 对 Mammoth / docx 转换可能生成的 thead-only 表格，保留第一行表头，将后续行移入 `tbody` 后再转为正文单元格。
+- 根目录官网脚本改为通过 `scripts/run-website.mjs` 转发；运行 dev/build/preview 前检查 `website/node_modules/.bin/astro`，缺失时自动执行 `npm install --prefix website`，再继续原命令。
+
+**验证**
+- `npm test -- src/services/docxPreviewService.test.ts`
+- `npm run test:e2e -- --grep "long HTML evidence tables wrap inside the preview pane"`
+- `npm run website:build`
+- 临时移走 `website/node_modules` 后运行 `npm run website:build`，确认脚本自动安装官网依赖并完成构建；随后恢复本地依赖目录。
+
+**影响**
+- 未安装 LibreOffice 的环境中，Word 真实预览 fallback 的表格正文样式更接近实际正文，不再被表头样式污染。
+- 新开发环境可直接从根目录运行官网脚本，不需要先记住进入 `website/` 单独安装依赖。
+
 ### [DEC-052] - 2026-05-28 - Word 预览优先使用 LibreOffice 后台 PDF 渲染
 
 **背景**

@@ -32,6 +32,19 @@
 
 ### 文档与发布说明
 
+#### ISS-122 v0.3.11 回归修复版本发布
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待 Release workflow 复验。
+- **问题:** Word 预览 fallback 与官网脚本依赖回归已修复，用户确认希望提交并发布一个新的 Release。
+- **建议实现:**
+  - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.11`。
+  - 更新 CHANGELOG 中 `0.3.11` 发布说明。
+  - 完成关键验证后提交、推送 `main`，再创建并推送 `v0.3.11` 标签触发 GitHub Release workflow。
+- **验收:** 远端 `main` 包含修复提交；远端存在 `v0.3.11` 标签；GitHub Actions 开始构建 Release。
+- **实现:** 已统一 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 版本为 `0.3.11`，并新增 `CHANGELOG.md` 的 `0.3.11` 小版本说明；发布前本地验证已通过，推送 `v0.3.11` 标签后由 Release workflow 构建产物。
+
 #### ISS-118 官网浏览器标签页图标改用应用 Logo
 
 - **优先级:** P1
@@ -102,6 +115,19 @@
 
 ### 工程结构整理
 
+#### ISS-121 前端构建 chunk size 性能优化
+
+- **优先级:** P2
+- **类型:** L2
+- **状态:** 未开始。
+- **问题:** `npm run build` 当前可正常通过，但 Vite 会提示部分 chunk 超过 500KB。该提示不是构建错误，也不阻塞当前合并；主要风险是后续功能继续增加后，桌面端冷启动和首次打开重型功能的加载成本可能继续上升。
+- **建议实现:**
+  - 先用构建产物分析确认大 chunk 的主要来源，重点检查 Vditor、CodeMirror、`docx`、Mammoth、设置页和导出预览相关依赖。
+  - 继续收紧懒加载边界：编辑器、Word 预览、HTML 预览、设置页、导出服务和 `.docx` 解析只在用户进入对应功能时加载。
+  - 评估 Vite / Rolldown chunk 拆分配置，避免把低频功能和主界面启动路径打进同一个大包。
+  - 保持 Tauri 桌面体验优先，优化目标以冷启动、首次打开预览/设置的体感和构建 warning 收敛为准，不为了消除 warning 引入复杂配置。
+- **验收:** `npm run build` 通过；主要入口 chunk 体积下降或 warning 数量减少；首次打开主界面、Word 预览、HTML 预览和设置页无明显回退；`npm test`、`npm run typecheck`、`npm run lint` 和关键 E2E 通过。
+
 #### ISS-113 根目录配置文件整理评估
 
 - **优先级:** P2
@@ -116,6 +142,18 @@
 - **实现:** 将 `eslint.config.js`、`playwright.config.ts`、`vite.config.ts`、`tsconfig.json`、`tsconfig.app.json`、`tsconfig.node.json` 迁移到 `config/`；`package.json` scripts 统一指定配置路径，并新增 `npm run typecheck`；根目录保留 `package.json`、lockfile、`index.html`、Tauri / 文档 / 源码目录等高频入口。
 
 ### 设置与导出体验
+
+#### ISS-120 合并后 Word 预览 fallback 与官网脚本回归修复
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 合并官网与 Word 真实预览相关 PR 后，整体复验发现两处回归：未安装 `website/` 依赖时从根目录执行官网构建会失败；LibreOffice 不可用时 Word 预览回落到 Mammoth HTML 后，部分表格正文单元格被输出为表头单元格，导致长 HTML 表格的正文样式与换行断言失效。
+- **建议实现:**
+  - 为 Mammoth HTML fallback 增加表格语义归一化，保留真实表头，正文区域的 `th` 转回 `td`。
+  - 根目录官网脚本在缺少 `website/node_modules` 时按需安装官网依赖，再执行 dev/build/preview。
+- **验收:** 长 HTML evidence table 的 Word 预览 E2E 通过；全量测试与构建通过；未预装 `website/` 依赖时 `npm run website:build` 可自动恢复并完成构建。
+- **实现:** `docxPreviewService` 在 Mammoth HTML 清洗后归一化表格结构：保留显式 `thead` / 首个隐式表头行，将正文行的 `th` 转为 `td`，并修复 thead-only 输出中正文行未进入 `tbody` 的情况；新增 `scripts/run-website.mjs` 作为根目录官网脚本转发入口，缺少 Astro 依赖时自动执行 `npm install --prefix website` 后继续运行。
 
 #### ISS-119 Word 预览改为真实导出产物驱动
 

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.11]
+
+### Fixed
+
+- 修复 LibreOffice 不可用时 Word 预览 HTML fallback 将表格正文单元格当作表头渲染的问题，长 HTML 表格预览恢复正常换行且不撑出面板。
+- 修复根目录官网脚本在未安装 `website/` 依赖时无法构建的问题；`website:dev`、`website:build`、`website:preview` 会按需补装官网依赖。
+
 ## [0.3.10]
 
 ### Added

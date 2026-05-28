@@ -1,7 +1,7 @@
 {
   "name": "folia",
   "private": true,
-  "version": "0.3.10",
+  "version": "0.3.11",
   "type": "module",
   "scripts": {
     "dev": "vite --config config/vite.config.ts",
@@ -11,9 +11,9 @@
     "test": "vitest run --config config/vite.config.ts",
     "test:e2e": "playwright test --config config/playwright.config.ts",
     "preview": "vite preview --config config/vite.config.ts",
-    "website:dev": "npm --prefix website run dev",
-    "website:build": "npm --prefix website run build",
-    "website:preview": "npm --prefix website run preview",
+    "website:dev": "node scripts/run-website.mjs dev",
+    "website:build": "node scripts/run-website.mjs build",
+    "website:preview": "node scripts/run-website.mjs preview",
     "tauri": "tauri",
     "tauri:build:local": "tauri build --config '{\"bundle\":{\"createUpdaterArtifacts\":false}}'",
     "tauri:build:update": "tauri build --config '{\"bundle\":{\"createUpdaterArtifacts\":true}}'",
