@@ -2,6 +2,25 @@
 
 ## 第一部分：决策记录
 
+### [DEC-049] - 2026-05-28 - 官网 favicon 使用应用自身 Logo
+
+**背景**
+用户希望官网在浏览器标签页中显示 Folia 软件自身 logo，而不是通用网页图标。
+
+**决策**
+- 使用 Tauri 应用图标 `src-tauri/icons/128x128.png` 作为官网 favicon 来源。
+- 官网公开资源改为 `website/public/favicon.png`，页面 `<link rel="icon">` 使用 `image/png`。
+- 保持首屏和站内显示仍使用现有 `folia-icon.png`，避免重复调整视觉布局。
+
+**验证**
+- `npm run website:build`
+- 构建产物确认：`website/dist/index.html` 指向 `/Folia/favicon.png`
+- `npm run lint`
+- `git diff --check`
+
+**影响**
+- 浏览器标签页、收藏夹等位置更一致地显示 Folia 应用品牌。
+
 ### [DEC-048] - 2026-05-28 - 官网首屏采用居中内容布局
 
 **背景**

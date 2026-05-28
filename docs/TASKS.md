@@ -32,6 +32,18 @@
 
 ### 文档与发布说明
 
+#### ISS-118 官网浏览器标签页图标改用应用 Logo
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待复验。
+- **问题:** 官网浏览器标签页显示的 favicon 仍使用通用 SVG 图标，和 Folia 软件自身 logo 不完全一致。
+- **建议实现:**
+  - 使用 Tauri 应用图标生成官网 `favicon.png`。
+  - 更新官网 `<link rel="icon">` 指向 PNG favicon。
+- **验收:** 打开官网时浏览器标签页显示 Folia 应用自身 logo；`npm run website:build` 通过。
+- **实现:** 已将 `src-tauri/icons/128x128.png` 复制为 `website/public/favicon.png`，并将页面 favicon 链接从 `favicon.svg` 改为 `favicon.png`。
+
 #### ISS-117 官网首屏改为居中内容布局
 
 - **优先级:** P1
