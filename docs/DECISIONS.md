@@ -2,6 +2,51 @@
 
 ## 第一部分：决策记录
 
+### [DEC-057] - 2026-05-29 - 收敛前端构建 chunk 与补齐 DOCX XML 回归
+
+**背景**
+`npm run build` 长期能成功，但 Vite/Rolldown 提示多个 chunk 超过 500KB；这会让后续冷启动和低频功能首开成本继续膨胀。与此同时，Word 表格导出已有 in-memory 节点测试，但还没有直接解压 `.docx` 检查 `word/document.xml`，无法防止 `gridSpan` / `vMerge` / 表头行这类 OOXML 关键节点在重构中退化。
+
+**决策**
+- 在 `config/vite.config.ts` 使用 Rolldown `output.codeSplitting.groups`，按依赖边界拆分 React、CodeMirror / UIW、Tauri、docx / Mammoth / JSZip、Vditor 和 lucide vendor chunks；不通过调大 warning 阈值掩盖问题。
+- 为 DOCX XML 回归新增显式 dev dependency `jszip`，测试中通过 `markdownToDocx()` 生成真实 `.docx` Blob，再解压检查 `word/document.xml`。
+- XML 回归覆盖法律 HTML 表格 fixture 中的 `w:gridSpan`、`w:vMerge`、`w:tblHeader` 和表格行数量。
+- 修正 HTML 表格导出行配置：正文行不再显式传入 `tableHeader: false`，避免 docx 输出 `w:tblHeader w:val="false"` 冗余节点；只有 `thead` 行写入 `tableHeader: true`。
+
+**验证**
+- `npm test -- src/services/word/docxXml.test.ts src/services/word/table-handler.test.ts`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- `git diff --check`
+
+**影响**
+- 当前最大生产 JS chunk 约 362KB，`npm run build` 不再出现 500KB chunk warning。
+- HTML 表格导出 Word 的合并单元格和表头行结构有真实 `.docx` XML 回归保护。
+
+### [DEC-056] - 2026-05-29 - 默认阅读字体改为中文优化字体栈
+
+**背景**
+用户反馈 Folia 当前默认字体对中文不够好看。复核后确认，预览默认值是 `Iowan Old Style`，该字体主要服务西文标题和正文；中文实际回退到系统中文字体，容易造成中英文混排时西文衬线、中文黑体的观感割裂。常见 Markdown 工具通常把界面字体、阅读字体和等宽字体分开，或通过主题 / CSS 管理阅读字体。
+
+**决策**
+- 新增 `--font-reading` 作为 Markdown 阅读和 Vditor 即时渲染编辑区的默认正文字体栈，优先使用 PingFang SC / Microsoft YaHei / Noto Sans CJK / Source Han Sans 等本机字体，不引入远程字体文件。
+- 保留 `--font-display` 的书卷气标题方向，但补充 Songti SC / STSong / Noto Serif CJK / Source Han Serif / SimSun 等中文衬线回退。
+- Settings / 预览字体从直接保存字体名改为保存预设：中文优化、系统默认、中文宋体、Iowan Old Style、Georgia；由 `settingsService` 统一解析为 CSS 字体栈。
+- 对旧设置中随其他设置一起持久化的旧默认 `Iowan Old Style` 做一次性迁移，切到“中文优化”；迁移完成后用户仍可在设置页手动选回 Iowan Old Style。
+- 打开 `.docx` 后的 HTML 预览复用同一预览字体解析，源码编辑和 Word 纸张预览继续使用各自既有字体体系，避免导出判断被应用阅读字体污染。
+
+**验证**
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+
+**影响**
+- 新用户默认进入更适合中文长文阅读的字体观感。
+- 仍保留 Iowan Old Style / Georgia 和中文宋体预设，用户可按偏好切换。
+
 ### [DEC-055] - 2026-05-28 - Word 纸张预览回归快速 CSS 仿 Word 路线
 
 **背景**

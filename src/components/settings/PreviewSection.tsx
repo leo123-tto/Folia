@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { getSettings, updateSettings, type AppSettings } from '../../services/settingsService';
+import {
+  getSettings,
+  PREVIEW_FONT_FAMILY_OPTIONS,
+  updateSettings,
+  type AppSettings,
+} from '../../services/settingsService';
 import type { PreviewFontFamily, PreviewWidth } from '../../services/settingsService';
 
 const FONT_SIZES = [13, 14, 15, 16, 18];
 const LINE_HEIGHTS = [1.5, 1.6, 1.7, 1.8, 2.0, 2.5];
-const PREVIEW_FONTS: PreviewFontFamily[] = ['Iowan Old Style', 'Georgia', 'System Default'];
 const PREVIEW_WIDTHS: PreviewWidth[] = [640, 680, 720, 800];
 
 export function PreviewSection() {
@@ -28,8 +32,8 @@ export function PreviewSection() {
           value={settings.previewFontFamily}
           onChange={(e) => handleChange({ previewFontFamily: e.target.value as PreviewFontFamily })}
         >
-          {PREVIEW_FONTS.map((f) => (
-            <option key={f} value={f}>{f}</option>
+          {PREVIEW_FONT_FAMILY_OPTIONS.map((font) => (
+            <option key={font.value} value={font.value}>{font.label}</option>
           ))}
         </select>
       </div>

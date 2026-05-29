@@ -82,11 +82,18 @@ export function createHtmlTable(
   const colCount = model.colCount;
   const colWidths = evenWidths(colCount);
 
-  const rows = model.rows.map((row) => new TableRow({
-    children: makeHtmlRowCells(row, model, colWidths, config),
-    tableHeader: row.section === 'thead',
-    height: tableRowHeight(config),
-  }));
+  const rows = model.rows.map((row) => {
+    const rowOptions = {
+      children: makeHtmlRowCells(row, model, colWidths, config),
+      height: tableRowHeight(config),
+    };
+
+    if (row.section === 'thead') {
+      return new TableRow({ ...rowOptions, tableHeader: true });
+    }
+
+    return new TableRow(rowOptions);
+  });
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },

@@ -3,6 +3,7 @@ import '../styles/preview.css';
 import type { TocItem } from '../types/document';
 import { useSettings } from '../hooks/useSettings';
 import { detectMarkdownRenderFeatures } from '../services/markdownFeatureDetector';
+import { resolvePreviewFontFamily } from '../services/settingsService';
 import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
 
 type PreviewPaneProps = {
@@ -20,9 +21,7 @@ export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneP
     () => detectMarkdownRenderFeatures(deferredSource),
     [deferredSource],
   );
-  const previewFontFamily = settings.previewFontFamily === 'System Default'
-    ? 'var(--font-body)'
-    : `'${settings.previewFontFamily}', var(--font-body)`;
+  const previewFontFamily = resolvePreviewFontFamily(settings.previewFontFamily);
 
   useEffect(() => {
     const el = containerRef.current;

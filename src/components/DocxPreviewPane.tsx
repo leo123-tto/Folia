@@ -1,5 +1,6 @@
 import '../styles/preview.css';
 import { useSettings } from '../hooks/useSettings';
+import { resolvePreviewFontFamily } from '../services/settingsService';
 
 type DocxPreviewPaneProps = {
   html: string;
@@ -7,9 +8,7 @@ type DocxPreviewPaneProps = {
 
 export function DocxPreviewPane({ html }: DocxPreviewPaneProps) {
   const settings = useSettings();
-  const previewFontFamily = settings.previewFontFamily === 'System Default'
-    ? 'var(--font-body)'
-    : `'${settings.previewFontFamily}', var(--font-body)`;
+  const previewFontFamily = resolvePreviewFontFamily(settings.previewFontFamily);
 
   return (
     <div

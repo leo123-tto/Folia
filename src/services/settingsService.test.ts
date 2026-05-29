@@ -66,12 +66,14 @@ describe('settingsService', () => {
     expect(getSettings().exportPresetId).toBe('legal');
     expect(getSettings().autoUpdateCheck).toBe(true);
     expect(getSettings().wechatCustomCss).toBe('');
+    expect(getSettings().previewFontFamily).toBe('Chinese Optimized');
 
     localStorage.setItem('folia-settings', '{invalid json');
 
     expect(getSettings().exportPresetId).toBe('legal');
     expect(getSettings().autoUpdateCheck).toBe(true);
     expect(getSettings().wechatCustomCss).toBe('');
+    expect(getSettings().previewFontFamily).toBe('Chinese Optimized');
   });
 
   it('migrates legacy export settings without recursive reads', () => {
@@ -110,6 +112,23 @@ describe('settingsService', () => {
 
     localStorage.setItem('folia-settings', JSON.stringify({ locale: 'fr-FR' }));
     expect(getSettings().locale).toBe('zh-CN');
+  });
+
+  it('normalizes preview font presets and migrates the old default once', () => {
+    updateSettings({ previewFontFamily: 'Chinese Serif' });
+    expect(getSettings().previewFontFamily).toBe('Chinese Serif');
+
+    localStorage.setItem('folia-settings', JSON.stringify({ previewFontFamily: 'Iowan Old Style' }));
+    expect(getSettings()).toMatchObject({
+      previewFontFamily: 'Chinese Optimized',
+      fontDefaultsVersion: 2,
+    });
+
+    updateSettings({ previewFontFamily: 'Iowan Old Style' });
+    expect(getSettings().previewFontFamily).toBe('Iowan Old Style');
+
+    localStorage.setItem('folia-settings', JSON.stringify({ previewFontFamily: 'Unsupported Font' }));
+    expect(getSettings().previewFontFamily).toBe('Chinese Optimized');
   });
 
   it('keeps old settings compatible with the default empty WeChat custom CSS', () => {

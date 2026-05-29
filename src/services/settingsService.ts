@@ -39,6 +39,7 @@ import {
 const STORAGE_KEY = 'folia-settings';
 const LEGACY_KEY = 'folia-export-settings';
 const LAST_FILE_KEY = 'folia-last-opened-file';
+const FONT_DEFAULTS_VERSION = 2;
 
 export const SETTINGS_CHANGED_EVENT = 'folia-settings-changed';
 export const STANDARD_CUSTOM_EXPORT_PRESET_LIMIT = STANDARD_PRESET_SLOT_LIMIT;
@@ -63,10 +64,41 @@ export class CustomHtmlExportPresetLimitError extends Error {
 }
 
 export type EditorFontFamily = 'IBM Plex Mono' | 'JetBrains Mono' | 'SF Mono' | 'System Default';
-export type PreviewFontFamily = 'Iowan Old Style' | 'Georgia' | 'System Default';
+export type PreviewFontFamily =
+  | 'Chinese Optimized'
+  | 'Chinese Serif'
+  | 'Iowan Old Style'
+  | 'Georgia'
+  | 'System Default';
 export type DefaultEncoding = 'UTF-8' | 'GBK' | 'GB18030';
 export type PreviewWidth = 640 | 680 | 720 | 800;
 export type AppLocale = 'zh-CN' | 'en-US' | 'ja-JP';
+
+export const PREVIEW_FONT_FAMILY_OPTIONS: ReadonlyArray<{
+  value: PreviewFontFamily;
+  label: string;
+}> = [
+  { value: 'Chinese Optimized', label: '中文优化' },
+  { value: 'System Default', label: '系统默认' },
+  { value: 'Chinese Serif', label: '中文宋体' },
+  { value: 'Iowan Old Style', label: 'Iowan Old Style' },
+  { value: 'Georgia', label: 'Georgia' },
+];
+
+export function resolvePreviewFontFamily(fontFamily: PreviewFontFamily): string {
+  switch (fontFamily) {
+    case 'Chinese Optimized':
+      return 'var(--font-reading)';
+    case 'Chinese Serif':
+      return 'var(--font-serif-reading)';
+    case 'System Default':
+      return 'var(--font-body)';
+    case 'Iowan Old Style':
+      return `'Iowan Old Style', var(--font-display)`;
+    case 'Georgia':
+      return `Georgia, var(--font-serif-reading)`;
+  }
+}
 
 export interface AppSettings {
   // 通用
@@ -99,6 +131,7 @@ export interface AppSettings {
   previewFontSize: number;
   previewLineHeight: number;
   previewWidth: PreviewWidth;
+  fontDefaultsVersion: number;
   // 外观
   theme: 'light' | 'dark';
   zoomLevel: number;
@@ -124,10 +157,11 @@ const defaults: AppSettings = {
   editorWordWrap: true,
   editorLineNumbers: true,
   editorSpellCheck: false,
-  previewFontFamily: 'Iowan Old Style',
+  previewFontFamily: 'Chinese Optimized',
   previewFontSize: 15,
   previewLineHeight: 1.7,
   previewWidth: 680,
+  fontDefaultsVersion: FONT_DEFAULTS_VERSION,
   theme: 'light',
   zoomLevel: 100,
 };
@@ -155,6 +189,12 @@ function normalizeCustomExportPresets(value: unknown): CustomPresetRegistry {
 
 function normalizeLocale(value: unknown): AppLocale {
   return value === 'en-US' || value === 'ja-JP' ? value : 'zh-CN';
+}
+
+function normalizePreviewFontFamily(value: unknown): PreviewFontFamily {
+  return PREVIEW_FONT_FAMILY_OPTIONS.some((option) => option.value === value)
+    ? value as PreviewFontFamily
+    : 'Chinese Optimized';
 }
 
 function normalizeWechatCustomCss(value: unknown): string {
@@ -283,6 +323,19 @@ function migrateLegacySettings(stored: Partial<AppSettings>): Partial<AppSetting
   } catch {
     // 迁移失败不影响正常使用
   }
+
+  if (next.fontDefaultsVersion !== FONT_DEFAULTS_VERSION) {
+    if (next.previewFontFamily === 'Iowan Old Style') {
+      next.previewFontFamily = 'Chinese Optimized';
+    }
+    next.fontDefaultsVersion = FONT_DEFAULTS_VERSION;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...defaults, ...next }));
+    } catch {
+      // 迁移失败不影响正常使用
+    }
+  }
+
   return next;
 }
 
@@ -327,6 +380,7 @@ export function getSettings(): AppSettings {
       disabledHtmlExportPresetIds,
       license,
       wechatCustomCss: normalizeWechatCustomCss(stored.wechatCustomCss),
+      previewFontFamily: normalizePreviewFontFamily(stored.previewFontFamily),
     };
   } catch {
     return { ...defaults };
@@ -354,6 +408,8 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
     ...current,
     ...patch,
     locale: normalizeLocale(patch.locale ?? current.locale),
+    fontDefaultsVersion: FONT_DEFAULTS_VERSION,
+    previewFontFamily: normalizePreviewFontFamily(patch.previewFontFamily ?? current.previewFontFamily),
     wechatCustomCss: normalizeWechatCustomCss(patch.wechatCustomCss ?? current.wechatCustomCss),
     customExportPresets,
     disabledExportPresetIds,

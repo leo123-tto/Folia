@@ -119,7 +119,7 @@
 
 - **优先级:** P2
 - **类型:** L2
-- **状态:** 未开始。
+- **状态:** 已完成，已复验。
 - **问题:** `npm run build` 当前可正常通过，但 Vite 会提示部分 chunk 超过 500KB。该提示不是构建错误，也不阻塞当前合并；主要风险是后续功能继续增加后，桌面端冷启动和首次打开重型功能的加载成本可能继续上升。
 - **建议实现:**
   - 先用构建产物分析确认大 chunk 的主要来源，重点检查 Vditor、CodeMirror、`docx`、Mammoth、设置页和导出预览相关依赖。
@@ -127,6 +127,7 @@
   - 评估 Vite / Rolldown chunk 拆分配置，避免把低频功能和主界面启动路径打进同一个大包。
   - 保持 Tauri 桌面体验优先，优化目标以冷启动、首次打开预览/设置的体感和构建 warning 收敛为准，不为了消除 warning 引入复杂配置。
 - **验收:** `npm run build` 通过；主要入口 chunk 体积下降或 warning 数量减少；首次打开主界面、Word 预览、HTML 预览和设置页无明显回退；`npm test`、`npm run typecheck`、`npm run lint` 和关键 E2E 通过。
+- **实现:** 在 `config/vite.config.ts` 中增加 Rolldown `codeSplitting.groups`，将 React、CodeMirror / UIW、Tauri、docx / Mammoth / JSZip、Vditor 和 lucide 拆为独立 vendor chunks。生产构建最大 chunk 从原先约 676KB / 611KB 收敛到约 362KB，`npm run build` 不再出现 500KB chunk warning。
 
 #### ISS-113 根目录配置文件整理评估
 
@@ -142,6 +143,20 @@
 - **实现:** 将 `eslint.config.js`、`playwright.config.ts`、`vite.config.ts`、`tsconfig.json`、`tsconfig.app.json`、`tsconfig.node.json` 迁移到 `config/`；`package.json` scripts 统一指定配置路径，并新增 `npm run typecheck`；根目录保留 `package.json`、lockfile、`index.html`、Tauri / 文档 / 源码目录等高频入口。
 
 ### 设置与导出体验
+
+#### ISS-124 中文默认字体与阅读字体预设优化
+
+- **优先级:** P2
+- **类型:** L1
+- **状态:** 已完成，已复验。
+- **问题:** 当前默认字体对中文长文阅读观感不够理想。现有设计系统正文回退链以系统 UI 字体为主，预览字体默认 `Iowan Old Style` 对中文实际仍回退到系统中文字体；标题 display 字体偏西文，可能造成中英文混排时标题、正文和 Vditor 编辑区观感不一致。
+- **建议实现:**
+  - 调研常见 Markdown 阅读器 / 编辑器的中文默认字体与字体设置策略。
+  - 评估 Folia 是否应区分 UI 字体、阅读正文字体、标题字体、源码编辑字体和导出纸张字体。
+  - 优先通过 CSS 变量和设置页预设调整，避免引入远程字体或增加启动体积。
+  - 同步覆盖 Vditor 即时渲染编辑区、稳定阅读预览和打开 `.docx` 预览。
+- **验收:** 形成默认字体栈调整方案；中文长文在 macOS / Windows 下观感更稳定；`docs/DESIGN.md`、设置页和回归测试同步更新。
+- **实现:** 新增 `--font-reading` 与 `--font-serif-reading` 字体栈，默认 Markdown 阅读预览从 `Iowan Old Style` 改为“中文优化”；Vditor 即时渲染编辑区使用中文阅读字体栈；Settings / 预览字体新增“中文优化 / 系统默认 / 中文宋体 / Iowan Old Style / Georgia”预设，并由 `settingsService` 统一解析 CSS 字体栈；旧设置中保留的旧默认 `Iowan Old Style` 会一次性迁移到“中文优化”，用户仍可手动选回。已补充设置服务回归测试。
 
 #### ISS-123 Word 纸张预览回归快速 CSS 仿 Word 路线
 
@@ -967,15 +982,19 @@
 
 - **优先级:** P2
 - **类型:** L2
+- **状态:** 已完成，已复验。
 - **问题:** 当前 Word 表格导出已有 in-memory 结构测试，但还未直接检查导出的 `.docx` zip XML，后续仍可能在 docx 包升级或表格转换重构时遗漏 `gridSpan` / `vMerge` 等关键节点。
 - **建议实现:**
   - 基于 `fixtures/legal-html-tables/` 增加 `markdownToDocx()` 导出测试。
   - 解压生成的 docx，检查 `word/document.xml` 中 `w:gridSpan`、`w:vMerge`、表头行和表格行数量。
   - 保持测试 fixture 小而稳定，避免依赖 Word 客户端渲染。
 - **验收:** HTML table 导出 Word 的关键 XML 合并节点有自动化回归保护。
+- **实现:** 新增 `src/services/word/docxXml.test.ts`，使用 `markdownToDocx()` 生成真实 `.docx` Blob，并通过 JSZip 解压检查 `word/document.xml` 中的 `w:gridSpan`、`w:vMerge`、`w:tblHeader` 和表格行数。测试同时发现 HTML 表格正文行会输出 `w:tblHeader w:val="false"`，已修正为仅真正的 `thead` 行写入 `tableHeader: true`。
 
 ## 进度日志
 
+- **2026-05-29** 完成 ISS-124：Markdown 阅读和 Vditor 即时渲染编辑默认改用中文优化字体栈，设置页新增“中文优化 / 系统默认 / 中文宋体 / Iowan Old Style / Georgia”预设，并对旧默认 `Iowan Old Style` 做一次性迁移；同步更新 `docs/DESIGN.md`、`CHANGELOG.md` 和设置服务回归测试。验证：`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 均通过。
+- **2026-05-29** 完成 ISS-121 / ISS-060：生产构建增加 Rolldown 依赖拆包组，主入口和重型编辑 / 导出依赖拆分到独立 vendor chunks，`npm run build` 不再出现 chunk size warning；新增 `.docx` XML 结构回归测试，直接检查 HTML 表格导出后的 `gridSpan`、`vMerge`、表头行和表格行数量，并修复 HTML 表格正文行输出 `tblHeader=false` 节点的问题。验证：`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 均通过。
 - **2026-05-22** 完成 ISS-113：根目录配置文件整理。ESLint、Playwright、Vite 和 TypeScript 配置集中迁移到 `config/`，日常命令通过 npm scripts 指向新配置路径，根目录只保留包管理文件、前端入口、桌面工程入口、文档和源码目录。验证：`npm test`、`npm run typecheck`、`npm run lint`、`npm run test:e2e -- --grep "settings modal"`、`npm run build`、`git diff --check` 均通过。
 - **2026-05-22** 完成 ISS-110 / ISS-111 / ISS-112：自动更新发现新版本后改为后台静默下载，不再显示阻塞式更新弹窗；下载完成后在顶部工具栏显示“重启更新”，点击后安装并重启。导出设置页继续减法，移除 Word / HTML 自定义槽位顶部重复导入按钮，收窄设置页预览和放大层，授权页不再展示购买、订阅或收费流程说明，并新增日文界面选项。Word `.docx` 表格导出补齐预设 `row_height` 与 `cell_margin`，让表格行高和单元格边距与纸张预览映射一致。验证：`npm test -- src/services/settingsService.test.ts src/services/word/table-handler.test.ts src/services/wordPreviewStyle.test.ts src/services/updateService.test.ts`、`npx tsc --noEmit`、`npm run lint`、`npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|license settings|Japanese|settings modal"`、`npm run build`、`git diff --check` 均通过。
 - **2026-05-21** 完成 ISS-109：HTML 导出自定义槽位移除设置页内手写 CSS 表单和粘贴导入区，改为导入 `.css` 样式文件或 `.json` 预设文件；Word / HTML 设置页预览侧只显示预设名，示例页说明压缩为“选中文本即可复制”。关于页图标与微信二维码确认通过本地资源打包，生产构建产物包含 `folia-icon` 与 `wechat-qr` 图片。验证：`npm test -- src/services/wechatPreviewService.test.ts src/services/wordPreviewStyle.test.ts src/services/word/parser.test.ts src/services/word/formatter.test.ts src/services/word/table-handler.test.ts`、`npx tsc --noEmit`、`npm run lint`、`npx playwright test e2e/layout-behavior.spec.ts --grep "HTML export settings|Word export settings|settings modal"`、`npm run build`、`git diff --check` 均通过。
