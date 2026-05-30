@@ -32,6 +32,19 @@
 
 ### Word 导出预设
 
+#### ISS-129 内置公文与学术论文 Word 预设精细化
+
+- **优先级:** P1
+- **类型:** L2
+- **状态:** 已完成，已复验。
+- **问题:** 当前内置 `academic` 和 `report` 预设仍偏通用：学术论文使用双倍行距，公文报告未按 GB/T 9704 的版心、2 号标题和 3 号正文调整。用户希望参考网上常见公文写作和学术论文格式，让默认模板更贴近真实使用。
+- **建议实现:**
+  - 公文报告按 GB/T 9704-2012 常见格式调整：A4、天头 3.7cm、订口 2.8cm、下白边 3.5cm、右白边 2.6cm，正文 3 号仿宋、标题 2 号小标宋、正文每段首行缩进 2 字符。
+  - 学术论文按 GB/T 7713.2-2022 附录 B 常见字号字体调整：中文题名小 2 号黑体，章标题小 4 号黑体，节标题 5 号黑体，正文 5 号宋体，图表标题/内容使用小 5 号体系。
+  - 补充内置预设回归测试，避免后续改动把这些标准化数值又退回通用模板。
+- **验收:** `report` 与 `academic` 内置预设值有明确测试覆盖；Word 预览和导出继续从同一 `PresetConfig` 读取；`npm run typecheck`、`npm test`、`npm run lint`、`npm run build` 通过。
+- **实现:** 已将 `report` 预设调整为 GB/T 9704 取向的公文版心、2 号标题、3 号正文和 4 号页码；已将 `academic` 预设调整为 GB/T 7713.2 取向的题名/章标题/节标题/正文/表格字号字体。新增 `src/services/word/config.test.ts` 覆盖两套内置预设关键数值。已通过 `npm run typecheck`、`npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。
+
 #### ISS-128 Word 预设 JSON v2 样式协议与 Markdown / HTML 映射
 
 - **优先级:** P1
@@ -1034,6 +1047,8 @@
 - **实现:** 新增 `src/services/word/docxXml.test.ts`，使用 `markdownToDocx()` 生成真实 `.docx` Blob，并通过 JSZip 解压检查 `word/document.xml` 中的 `w:gridSpan`、`w:vMerge`、`w:tblHeader` 和表格行数。测试同时发现 HTML 表格正文行会输出 `w:tblHeader w:val="false"`，已修正为仅真正的 `thead` 行写入 `tableHeader: true`。
 
 ## 进度日志
+
+- **2026-05-31** 完成 ISS-129：参考 GB/T 9704-2012 和 GB/T 7713.2-2022 调整内置 Word 预设。`report` 现在使用公文版心、2 号小标宋标题、3 号仿宋正文和 4 号页码；`academic` 使用学术论文题名/章标题/节标题/正文/表格字号字体体系，并默认显示图片标题。新增 `src/services/word/config.test.ts` 覆盖关键数值。验证：`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 均通过。
 
 - **2026-05-31** 完成 ISS-127 / ISS-128 code review 跟进修复：md2word 风格 JSON 现在即使只包含 `table.cell_margin.top/bottom/left/right` 也会按 dxa 转 cm 导入；JSON v2 表格样式只设置 `cell_margin` 时会同步展开到 DOCX 四边距；Word 纸张预览中未设置的表格背景回退为透明，避免默认预览出现异常底色。验证：新增回归先失败后通过，随后执行 `npm run typecheck`、`npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。
 
