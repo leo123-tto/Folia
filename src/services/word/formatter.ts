@@ -196,6 +196,13 @@ export function createFormattedRuns(
       const headingKey = `level${options.titleLevel}` as keyof typeof config.titles;
       const headingConf = config.titles[headingKey];
       if (headingConf) {
+        if (headingConf.font || headingConf.ascii) {
+          font = {
+            ...font,
+            name: headingConf.font ?? font.name,
+            ascii: headingConf.ascii ?? font.ascii,
+          };
+        }
         fontSize = headingConf.size;
         color = headingConf.color ?? color;
       }

@@ -7,6 +7,7 @@ import {
   AlignmentType,
   HeadingLevel,
   Footer,
+  Header,
   PageNumber,
   type FileChild,
 } from 'docx';
@@ -87,7 +88,7 @@ export async function markdownToDocx(
             },
           },
         },
-        footers: buildFooter(config),
+        ...buildPageNumber(config),
         children: paragraphs,
       },
     ],
@@ -315,39 +316,56 @@ function cmToTwip(cm: number): number {
 // Helper: footer / page number
 // ---------------------------------------------------------------------------
 
-function buildFooter(
+function buildPageNumber(
   config: PresetConfig,
-): { default: Footer } | undefined {
+): { headers: { default: Header } } | { footers: { default: Footer } } | undefined {
   if (!config.page_number.enabled) return undefined;
 
   const pn = config.page_number;
   const fontObj = { eastAsia: pn.font };
+  const children: TextRun[] = [];
+
+  if (pn.format.includes('1')) {
+    children.push(new TextRun({
+      children: [PageNumber.CURRENT],
+      font: fontObj,
+      size: ptToHalfPt(pn.size),
+    }));
+  }
+
+  if (pn.format.includes('/') && pn.format.includes('1') && pn.format.includes('x')) {
+    children.push(new TextRun({
+      text: '/',
+      font: fontObj,
+      size: ptToHalfPt(pn.size),
+    }));
+  }
+
+  if (pn.format.includes('x')) {
+    children.push(new TextRun({
+      children: [PageNumber.TOTAL_PAGES],
+      font: fontObj,
+      size: ptToHalfPt(pn.size),
+    }));
+  }
+
+  const paragraph = new Paragraph({
+    alignment: parseAlignment(pn.align ?? 'center'),
+    children,
+  });
+
+  if (pn.position === 'header') {
+    return {
+      headers: {
+        default: new Header({ children: [paragraph] }),
+      },
+    };
+  }
 
   return {
-    default: new Footer({
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              children: [PageNumber.CURRENT],
-              font: fontObj,
-              size: ptToHalfPt(pn.size),
-            }),
-            new TextRun({
-              text: '/',
-              font: fontObj,
-              size: ptToHalfPt(pn.size),
-            }),
-            new TextRun({
-              children: [PageNumber.TOTAL_PAGES],
-              font: fontObj,
-              size: ptToHalfPt(pn.size),
-            }),
-          ],
-        }),
-      ],
-    }),
+    footers: {
+      default: new Footer({ children: [paragraph] }),
+    },
   };
 }
 
@@ -496,6 +514,11 @@ function addHeading(
     4: HeadingLevel.HEADING_4,
   };
 
+  const headingIndent =
+    hc.indent && hc.indent > 0
+      ? hc.indent * config.fonts.default.size * 20
+      : undefined;
+
   return new Paragraph({
     heading: headingLevelMap[level],
     alignment: parseAlignment(hc.align),
@@ -504,7 +527,7 @@ function addHeading(
       after: hc.space_after * 20,
       line: (hc.line_spacing ?? config.paragraph.line_spacing) * 240,
     },
-    indent: hc.indent ? { firstLine: cmToTwip(hc.indent) } : undefined,
+    indent: headingIndent ? { firstLine: headingIndent } : undefined,
     children: createFormattedRuns(text, config, { titleLevel: level }),
   });
 }
@@ -641,6 +664,7 @@ async function addImage(
   alt: string,
   config: PresetConfig,
 ): Promise<Paragraph[]> {
+  const caption = createImageCaption(alt, config);
   // 创建文本占位符（降级方案）
   const createPlaceholder = (): Paragraph =>
     new Paragraph({
@@ -661,7 +685,7 @@ async function addImage(
 
   // HTTP/HTTPS URL：受 CSP 限制，使用占位符
   if (/^https?:\/\//i.test(url)) {
-    return [createPlaceholder()];
+    return [createPlaceholder(), ...caption];
   }
 
   try {
@@ -719,9 +743,31 @@ async function addImage(
           }),
         ],
       }),
+      ...caption,
     ];
   } catch {
     // 读取或解析失败时优雅降级为文本占位符
-    return [createPlaceholder()];
+    return [createPlaceholder(), ...caption];
   }
+}
+
+function createImageCaption(alt: string, config: PresetConfig): Paragraph[] {
+  if (!config.image.show_caption || !alt.trim()) return [];
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+      children: [
+        new TextRun({
+          text: alt.trim(),
+          font: {
+            eastAsia: config.fonts.default.name,
+            ascii: config.fonts.default.ascii,
+          },
+          size: ptToHalfPt(Math.max(8, config.fonts.default.size - 2)),
+          color: config.fonts.default.color ?? '666666',
+        }),
+      ],
+    }),
+  ];
 }

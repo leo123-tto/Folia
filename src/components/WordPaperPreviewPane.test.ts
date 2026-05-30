@@ -2,8 +2,9 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getPreset } from '../services/word/config';
 import { createWordPreviewArtifact } from '../services/wordPreviewArtifactService';
-import { paginateRenderedContent, WordPaperPreviewPane } from './WordPaperPreviewPane';
+import { applyWordPreviewPresetPostprocess, paginateRenderedContent, WordPaperPreviewPane } from './WordPaperPreviewPane';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -141,6 +142,23 @@ describe('paginateRenderedContent', () => {
     const pages = pageContents(pagesContainer);
     expect(pages).toHaveLength(1);
     expect(pages[0].textContent).toContain('合计');
+  });
+});
+
+describe('applyWordPreviewPresetPostprocess', () => {
+  it('adds image captions when enabled and alt text exists', () => {
+    const preset = {
+      ...getPreset('legal'),
+      image: {
+        ...getPreset('legal').image,
+        show_caption: true,
+      },
+    };
+    const content = createMeasureContent('<p><img src="./evidence.png" alt="证据图片"></p>');
+
+    applyWordPreviewPresetPostprocess(content, preset);
+
+    expect(content.querySelector('.word-image-caption')?.textContent).toBe('证据图片');
   });
 });
 

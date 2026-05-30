@@ -49,6 +49,8 @@ export interface HeadingConfig {
   indent?: number;
   color?: string;
   line_spacing?: number;
+  font?: string;
+  ascii?: string;
 }
 
 /** 页码配置 */
@@ -58,6 +60,14 @@ export interface PageNumberConfig {
   font: string;
   size: number;
   position: 'footer' | 'header';
+  align?: 'left' | 'center' | 'right';
+}
+
+export interface TableCellMarginsConfig {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
 /** 表格配置 */
@@ -68,8 +78,14 @@ export interface TableConfig {
   line_spacing: number;
   row_height: number;
   cell_margin: number;
+  cell_margins?: TableCellMarginsConfig;
+  alignment?: 'left' | 'center' | 'right';
+  vertical_align?: 'top' | 'center' | 'bottom';
   header_font: FontConfig;
   body_font: FontConfig;
+  header_background_color?: string;
+  row_odd_background_color?: string;
+  row_even_background_color?: string;
 }
 
 /** 代码块配置 */

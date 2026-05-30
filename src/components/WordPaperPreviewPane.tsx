@@ -6,7 +6,7 @@ import { listEnabledExportPresets, setExportPreset } from '../services/settingsS
 import { createWordPreviewArtifact } from '../services/wordPreviewArtifactService';
 import { getPreset } from '../services/word/config';
 import { createWordPreviewStyle } from '../services/wordPreviewStyle';
-import type { PresetId } from '../services/word';
+import type { PresetConfig, PresetId } from '../services/word';
 
 type WordPaperPreviewPaneProps = {
   source: string;
@@ -121,6 +121,27 @@ function cloneTableShell(table: HTMLTableElement): { table: HTMLTableElement; bo
   clone.append(body);
 
   return { table: clone, body };
+}
+
+// Exported for deterministic unit tests without rendering Vditor.
+// eslint-disable-next-line react-refresh/only-export-components
+export function applyWordPreviewPresetPostprocess(root: HTMLElement, preset: PresetConfig): void {
+  if (!preset.image.show_caption) return;
+
+  root.querySelectorAll<HTMLImageElement>('img[alt]').forEach((image) => {
+    const captionText = image.alt.trim();
+    if (!captionText) return;
+
+    const anchor = image.parentElement?.tagName === 'P' && image.parentElement.children.length === 1
+      ? image.parentElement
+      : image;
+    if (anchor.nextElementSibling?.classList.contains('word-image-caption')) return;
+
+    const caption = document.createElement('p');
+    caption.className = 'word-image-caption';
+    caption.textContent = captionText;
+    anchor.after(caption);
+  });
 }
 
 // Exported for deterministic pagination unit tests without rendering Vditor.
@@ -310,6 +331,7 @@ export function WordPaperPreviewPane({
       if (cancelled || !measureRef.current || !pagesRef.current) return;
 
       measureRef.current.innerHTML = artifact.html;
+      applyWordPreviewPresetPostprocess(measureRef.current, preset);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           if (cancelled || !measureRef.current || !pagesRef.current) return;

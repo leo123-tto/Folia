@@ -2,6 +2,30 @@
 
 ## 第一部分：决策记录
 
+### [DEC-059] - 2026-05-30 - Word JSON 预设兼容 md2word 配置并补齐导出映射
+
+**背景**
+用户希望继续研究 Word 导出能力，让导出的内容和自定义 JSON 配置保持一致，并参考 `md2word` Skill 的 YAML 配置体系扩大 Folia 的 JSON 示例。现有 Folia 已以 `PresetConfig` 驱动 Word 纸张预览和 `.docx` 导出，但设置页 JSON 示例字段较少；外部 md2word 配置转换为 JSON 后，`row_height_cm`、`table.header/body`、`cell_margin` 对象、`quote.left_indent_inches` 等字段无法直接导入。
+
+**决策**
+- 保持 Folia 的 `PresetConfig` 为唯一配置来源，不引入 Python sidecar，也不直接导入 `.yaml`。
+- 扩展 Word 预设 JSON 模板，覆盖页面、字体、标题、正文、页码、表格、代码、引用、数学、图片、分割线和列表。
+- 导入时兼容 md2word 风格 JSON：将 dxa 表格边距转为 cm、pt 首行缩进转为字符缩进、inch 引用缩进转为 pt，并把 `table.header/body`、`code_block.label/content` 等别名归一化到 Folia 字段。
+- 导入时统一颜色为无 `#` 的 6 位 hex，并拒绝非法颜色，避免预览和 DOCX 输出分叉。
+- `.docx` 导出与 Word 纸张预览同步补齐标题字体、页码格式与对齐、表格对齐、垂直对齐、表格背景色、四边单元格边距和图片标题。
+
+**验证**
+- `npm test -- src/services/word/presetImport.test.ts src/services/word/docxXml.test.ts src/services/wordPreviewStyle.test.ts src/components/WordPaperPreviewPane.test.ts`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build`
+- `git diff --check`
+
+**影响**
+- 用户可以把 md2word YAML 转成同结构 JSON 后导入 Folia，并获得更接近 md2word 预设的 Word 导出效果。
+- 旧自定义预设仍可读取；缺失的新字段在运行时使用默认值，不做破坏性迁移。
+
 ### [DEC-058] - 2026-05-29 - 发布 v0.3.12 字体与导出回归修复版本
 
 **背景**
