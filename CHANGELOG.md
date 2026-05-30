@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 
 - Word 纸张预览和真实 `.docx` 导出继续以同一套 `PresetConfig` 为来源，并补齐标题字体、页码格式/位置、表格背景色、表格对齐、单元格四边距和图片标题的可见样式映射。
 - Word 纸张预览和 `.docx` 导出会消费 JSON v2 样式映射；映射引用不存在时导入失败，避免 JSON 中写了样式但实际导出无效。
+- 内置 Word 预设中的“公文报告”更贴近 GB/T 9704 公文版式，“学术论文”更贴近 GB/T 7713.2 学术论文常见字号字体。
 
 ### Fixed
 
