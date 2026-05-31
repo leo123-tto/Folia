@@ -2,6 +2,26 @@
 
 ## 第一部分：决策记录
 
+### [DEC-064] - 2026-05-31 - Gitee Release 同步降级为带超时的 best-effort
+
+**背景**
+`v0.3.13` 发布时，GitHub Release 三平台产物和 `latest.json` 均已正常上传并公开，但 Release workflow 的 Gitee 同步步骤长时间停在附件上传阶段，最终虽同步完成，但耗时明显高于主发布链路。进一步复核发现：客户端自动更新运行时已经只使用 GitHub `latest.json`，Gitee 在当前架构中只是发布产物镜像；历史版本的 Gitee 同步也存在创建 release 失败后跳过的情况。
+
+**决策**
+- GitHub Release 继续作为发布和自动更新的主路径。
+- Gitee 同步保留为镜像能力，但在 workflow 中降级为 best-effort：步骤 `continue-on-error`，并设置 20 分钟上限。
+- Gitee API 调用统一增加连接超时、总时长超时和有限重试；单个附件上传失败时记录并继续，不让镜像失败反向阻塞 GitHub Release。
+- 创建 Gitee release 失败时，尝试复用同 tag 的既有 release，避免 rerun 或半成功状态下无法继续同步。
+
+**验证**
+- `.github/workflows/release.yml` 可被本地 YAML 解析。
+- `git diff --check`
+- `v0.3.13` 的 Gitee release 最终可见 13 个资产，包含 Gitee 自带源码包、构建产物和 `latest.json`。
+
+**影响**
+- 后续发布不会因为 Gitee 附件上传慢或无响应而无限挂起。
+- 如果 Gitee 上传失败，GitHub Release 和自动更新主路径仍保持可用；Gitee 镜像完整性需要按 release run 日志另行确认。
+
 ### [DEC-063] - 2026-05-31 - 发布 v0.3.13 Word JSON 与预设优化版本
 
 **背景**
@@ -20,6 +40,8 @@
 - `npm run lint`
 - `npm run build`
 - `cd src-tauri && cargo check`
+- GitHub Actions Release run `26703759018` 成功完成 macOS aarch64、macOS x86_64、Windows 和 publish job。
+- GitHub Release `v0.3.13` 已公开发布，包含 11 个附件和 `latest.json`：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.13
 
 **影响**
 - 用户可通过 GitHub Release / 自动更新获取 Word JSON 与预设优化版本。

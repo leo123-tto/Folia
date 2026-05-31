@@ -74,18 +74,31 @@
 
 ### 文档与发布说明
 
+#### ISS-131 Release workflow Gitee 同步超时保护
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，待下次发布复验。
+- **问题:** `v0.3.13` 发布时 GitHub Release 和 `latest.json` 已发布，但 Gitee 附件上传极慢；现有 workflow 没有步骤超时，也没有复用已存在 Gitee release 的路径，容易让发布流程长时间停在镜像同步阶段。
+- **建议实现:**
+  - Gitee 同步降级为 best-effort，不阻塞 GitHub Release 主发布路径。
+  - 为 Gitee 同步步骤和每个 `curl` 请求增加超时，避免无限等待。
+  - 创建 Gitee release 失败时尝试复用同 tag 的既有 release，再继续上传附件。
+- **验收:** Release workflow 语法有效；后续 tag 发布时 GitHub Release 不会因 Gitee 上传长时间无响应而无限挂起。
+- **实现:** `.github/workflows/release.yml` 已为 `Sync to Gitee` 增加 `continue-on-error`、20 分钟步骤超时、`curl` 连接/总时长超时和一次重试；创建 release 失败时会查询并复用同 tag 的既有 release；单个附件上传失败会记录并继续。已通过 workflow YAML 解析和 `git diff --check` 验证。
+
 #### ISS-130 v0.3.13 Word JSON 与预设优化版本发布
 
 - **优先级:** P1
 - **类型:** L1
-- **状态:** 已完成，待 Release workflow 复验。
+- **状态:** 已完成，已复验。
 - **问题:** Word JSON 完整模板、md2word 兼容、JSON v2 样式映射、公文/学术论文内置预设优化已经合并到远端 `main`，需要同步发布新补丁版本。
 - **建议实现:**
   - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.13`。
   - 将 `CHANGELOG.md` 的 Unreleased 内容归档到 `0.3.13`。
   - 完成关键验证后提交并推送 `main`，再创建并推送 `v0.3.13` 标签触发 GitHub Release workflow。
 - **验收:** 远端 `main` 包含版本提交；远端存在 `v0.3.13` 标签；GitHub Actions Release workflow 开始构建并发布 GitHub Release。
-- **实现:** 已统一 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 版本为 `0.3.13`；`CHANGELOG.md` 已将当前 Unreleased 归档为 `0.3.13`。发布前验证已通过，等待推送 `main` 与 `v0.3.13` 标签触发 Release workflow。
+- **实现:** 已统一 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 版本为 `0.3.13`；`CHANGELOG.md` 已将当前 Unreleased 归档为 `0.3.13`。已推送 `main` 与 annotated tag `v0.3.13`，Release workflow run `26703759018` 已成功完成 macOS aarch64、macOS x86_64、Windows 和 publish job。GitHub Release 已公开发布并包含 11 个附件（含 `latest.json`）；Gitee release 已同步 13 个资产（含 Gitee 自带源码包和 `latest.json`）。GitHub Release 地址：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.13
 
 #### ISS-125 v0.3.12 字体与导出回归修复版本发布
 
@@ -1060,6 +1073,8 @@
 - **实现:** 新增 `src/services/word/docxXml.test.ts`，使用 `markdownToDocx()` 生成真实 `.docx` Blob，并通过 JSZip 解压检查 `word/document.xml` 中的 `w:gridSpan`、`w:vMerge`、`w:tblHeader` 和表格行数。测试同时发现 HTML 表格正文行会输出 `w:tblHeader w:val="false"`，已修正为仅真正的 `thead` 行写入 `tableHeader: true`。
 
 ## 进度日志
+
+- **2026-05-31** 发布 v0.3.13：推送 `main` 与 annotated tag `v0.3.13`，GitHub Actions Release run `26703759018` 成功构建 macOS aarch64 / macOS x86_64 / Windows 产物，发布 GitHub Release 并上传 `latest.json`。Gitee 附件同步耗时较长但最终完成，发布后补充 ISS-131，将 Gitee 同步降级为带超时的 best-effort 步骤，避免后续发布被镜像上传无限挂起。GitHub Release 地址：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.13
 
 - **2026-05-31** 完成 ISS-129：参考 GB/T 9704-2012 和 GB/T 7713.2-2022 调整内置 Word 预设。`report` 现在使用公文版心、2 号小标宋标题、3 号仿宋正文和 4 号页码；`academic` 使用学术论文题名/章标题/节标题/正文/表格字号字体体系，并默认显示图片标题。新增 `src/services/word/config.test.ts` 覆盖关键数值。验证：`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`git diff --check` 均通过。
 

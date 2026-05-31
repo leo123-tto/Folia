@@ -98,6 +98,8 @@ jobs:
             --draft=false --repo "${{ github.repository }}"
 
       - name: Sync to Gitee
+        continue-on-error: true
+        timeout-minutes: 20
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
@@ -112,8 +114,24 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
           REPO="${GITEE_OWNER}/Folia"
 
+          curl_gitee() {
+            curl --silent --show-error --connect-timeout 20 --max-time 90 --retry 1 --retry-delay 2 "$@"
+          }
+
+          extract_release_id() {
+            RELEASE_RESPONSE="$1" python3 - <<'PY'
+          import json
+          import os
+
+          try:
+              print(json.loads(os.environ.get("RELEASE_RESPONSE", "")).get("id", ""))
+          except Exception:
+              print("")
+          PY
+          }
+
           # Create Gitee release
-          RELEASE_RESPONSE=$(curl -s -X POST \
+          RELEASE_RESPONSE=$(curl_gitee -X POST \
             "https://gitee.com/api/v5/repos/${REPO}/releases" \
             -H "Content-Type: application/json" \
             -d "{
@@ -123,17 +141,15 @@ jobs:
               \"body\": \"Folia ${VERSION} - 自动同步自 GitHub\",
               \"target_commitish\": \"main\",
               \"prerelease\": false
-            }")
-          RELEASE_ID=$(RELEASE_RESPONSE="$RELEASE_RESPONSE" python3 - <<'PY'
-          import json
-          import os
+            }" || true)
+          RELEASE_ID=$(extract_release_id "$RELEASE_RESPONSE")
 
-          try:
-              print(json.loads(os.environ.get("RELEASE_RESPONSE", "")).get("id", ""))
-          except Exception:
-              print("")
-          PY
-          )
+          if [ -z "$RELEASE_ID" ]; then
+            echo "Gitee release may already exist, trying to reuse ${TAG}"
+            RELEASE_RESPONSE=$(curl_gitee \
+              "https://gitee.com/api/v5/repos/${REPO}/releases/tags/${TAG}?access_token=${GITEE_TOKEN}" || true)
+            RELEASE_ID=$(extract_release_id "$RELEASE_RESPONSE")
+          fi
 
           if [ -z "$RELEASE_ID" ]; then
             echo "Failed to create Gitee release, skipping sync"
@@ -143,17 +159,22 @@ jobs:
 
           # Download all assets from GitHub release (excluding latest.json)
           mkdir -p release-assets
-          gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets
+          if ! timeout 300s gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets; then
+            echo "Failed to download GitHub release assets, skipping Gitee sync"
+            exit 0
+          fi
 
           # Upload build artifacts to Gitee (skip latest.json, we'll generate a Gitee version)
           for FILE in release-assets/*; do
             FILENAME=$(basename "$FILE")
             if [ "$FILENAME" = "latest.json" ]; then continue; fi
             echo "Uploading ${FILENAME} to Gitee..."
-            curl -s -X POST \
+            if ! curl_gitee --fail-with-body -X POST \
               "https://gitee.com/api/v5/repos/${REPO}/releases/${RELEASE_ID}/attach_files" \
               -F "access_token=${GITEE_TOKEN}" \
-              -F "file=@${FILE}" > /dev/null
+              -F "file=@${FILE}" > /dev/null; then
+              echo "Failed to upload ${FILENAME} to Gitee, continuing"
+            fi
           done
 
           # Generate Gitee-specific latest.json with exact tag download URLs.
@@ -168,9 +189,11 @@ jobs:
           npm run updater:manifest
 
           # Upload Gitee latest.json (named latest.json on Gitee)
-          curl -s -X POST \
+          if ! curl_gitee --fail-with-body -X POST \
             "https://gitee.com/api/v5/repos/${REPO}/releases/${RELEASE_ID}/attach_files" \
             -F "access_token=${GITEE_TOKEN}" \
-            -F "file=@latest-gitee.json;filename=latest.json" > /dev/null
+            -F "file=@latest-gitee.json;filename=latest.json" > /dev/null; then
+            echo "Failed to upload latest.json to Gitee, continuing"
+          fi
 
           echo "Gitee release sync complete"

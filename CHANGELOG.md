@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Release workflow 的 Gitee 附件同步改为带超时的 best-effort 步骤：GitHub Release 和 `latest.json` 仍是发布主路径，Gitee 上传过慢或失败时不再无限挂起后续发布流程。
+
 ## [0.3.13]
 
 ### Added
