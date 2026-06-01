@@ -312,7 +312,7 @@
 
 - **优先级:** P1
 - **类型:** L2
-- **状态:** 已完成，待发布复验。
+- **状态:** 已完成，已复验。
 - **问题:** 默认阅读字体和设置入口仍不够自然；“中文优化 / 中文宋体”这类预设作为主路径心智偏重，且 Markdown H1/H2 与 H3/H4 混用衬线/非衬线会造成标题层级割裂。
 - **建议实现:**
   - Settings / 预览改为中文字体、英文字体、标题字体三组选择，默认入口统一为“默认”。
@@ -320,7 +320,7 @@
   - Markdown 阅读预览、`.docx` HTML 预览和 Vditor 即时渲染编辑共用新阅读字体变量。
   - H1-H6 默认跟随正文或统一标题字体，层级通过字号、间距和渐进字重表达。
 - **验收:** 字体设置三组选择可用；旧设置迁移不丢失语义；Markdown / `.docx` HTML 预览和即时渲染编辑都同步生效；相关单元、E2E、类型检查、lint 和构建通过。
-- **实现:** 已新增中文字体、英文字体、标题字体和自定义字体字段；`settingsService` 将旧版 `Chinese Optimized`、`Chinese Serif`、`Iowan Old Style`、`Georgia`、`System Default` 迁移到新字段；阅读字体栈按英文字体栈 → 中文字体栈 → 默认 reading 栈生成，标题字体默认跟随正文。已补充设置服务、设置页组件和 E2E 回归。
+- **实现:** 已新增中文字体、英文字体、标题字体和自定义字体字段；`settingsService` 将旧版 `Chinese Optimized`、`Chinese Serif`、`Iowan Old Style`、`Georgia`、`System Default` 迁移到新字段；阅读字体栈按英文字体栈 → 中文字体栈 → 默认 reading 栈生成，标题字体默认跟随正文。已补充设置服务、设置页组件和 E2E 回归。`v0.3.18` 已公开发布，Release workflow run `26757112158` 成功完成 macOS Apple Silicon、macOS Intel、Windows 和 publish job，并上传 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.18
 
 #### ISS-124 中文默认字体与阅读字体预设优化
 
@@ -1171,7 +1171,7 @@
 
 ## 进度日志
 
-- **2026-06-01** 完成 ISS-138 并准备发布 v0.3.18：Settings / 预览字体改为中文字体、英文字体、标题字体三组选择，默认入口统一为“默认”，并支持自定义字体名；Markdown 阅读预览、`.docx` HTML 预览和 Vditor 即时渲染编辑共用新字体栈；H1-H6 默认跟随正文或统一标题字体，不再按层级混用衬线/非衬线。版本号已统一到 `0.3.18`；验证：`npm test -- src/services/settingsService.test.ts src/components/settings/PreviewSection.test.tsx`、`npm run typecheck`、`cd src-tauri && cargo check`、`git diff --check && git diff --cached --check`、`npm run test:e2e -- --grep "preview font settings"`、`npm test`、`npm run lint`、`npm run build` 均通过。
+- **2026-06-01** 完成 ISS-138 并发布 v0.3.18：Settings / 预览字体改为中文字体、英文字体、标题字体三组选择，默认入口统一为“默认”，并支持自定义字体名；Markdown 阅读预览、`.docx` HTML 预览和 Vditor 即时渲染编辑共用新字体栈；H1-H6 默认跟随正文或统一标题字体，不再按层级混用衬线/非衬线。版本号已统一到 `0.3.18`；验证：`npm test -- src/services/settingsService.test.ts src/components/settings/PreviewSection.test.tsx`、`npm run typecheck`、`cd src-tauri && cargo check`、`git diff --check && git diff --cached --check`、`npm run test:e2e -- --grep "preview font settings"`、`npm test`、`npm run lint`、`npm run build` 均通过。已推送发布提交 `6d78a35` 与 tag `v0.3.18`；Release workflow run `26757112158` 成功完成，GitHub Release 已公开并包含 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.18。Gitee 同步步骤最终成功，耗时约 18 分 40 秒。
 
 - **2026-06-01** 完成 ISS-135 / v0.3.16 发布：`v0.3.14` 标签触发的 Release run `26736730556` 中 macOS 产物成功，但 Windows MSI 在 WiX `light.exe` 阶段失败，publish job 被跳过且 GitHub Release 未公开发布；`v0.3.15` 标签触发的 Release run `26737581091` 中 macOS 产物成功，但 Windows Rust 编译因 `Manager` trait import 条件错误失败。本轮保留文件关联能力，将 Windows 文件类型描述改为 ASCII 兼容文本，恢复 `Manager` 全平台导入，并把版本号统一到 `0.3.16`。本地验证已通过 `git diff --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`；Release run `26738126995` 成功完成 macOS x64、macOS aarch64、Windows 和 publish job，GitHub Release 已公开并包含 `latest.json` 与 Windows `.exe` / `.msi` 产物：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.16。按 `release-workflow` 补齐 Release Notes，并清理 `v0.3.14` / `v0.3.15` 失败 draft release。后续补齐 `v0.3.9` / `v0.3.11` / `v0.3.12` / `v0.3.13` 历史空白 Release Notes，按固定结构重写 `v0.3.10` Release Notes，并统一移除正文开头重复版本标题。
 

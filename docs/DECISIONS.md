@@ -2,7 +2,7 @@
 
 ## 第一部分：决策记录
 
-### [DEC-071] - 2026-06-01 - 重做 Markdown 阅读字体设置并准备发布 v0.3.18
+### [DEC-071] - 2026-06-01 - 重做 Markdown 阅读字体设置并发布 v0.3.18
 
 **背景**
 用户反馈 Folia 默认阅读字体仍不够好看，且 Settings / 预览中“中文优化 / 中文宋体”等预设作为主入口不自然。当前 Markdown 标题还存在 H1/H2 使用衬线、H3/H4 回到非衬线的层级割裂。远端最新公开版本为 `v0.3.17`，本轮字体设置重做需要作为新的补丁版本发布。
@@ -24,6 +24,11 @@
 - `npm test`
 - `npm run lint`
 - `npm run build`
+- 已推送发布提交 `6d78a35` 与 annotated tag `v0.3.18`。
+- Release workflow run `26757112158` 已成功完成，macOS Apple Silicon、macOS Intel、Windows 和 publish job 均为 success。
+- GitHub Release 已公开发布并包含 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.18
+- Gitee 同步步骤最终成功，耗时约 18 分 40 秒；GitHub Release 仍是发布与自动更新主路径。
+- `v0.3.18` Release Notes 已按固定结构补齐，正文未重复版本标题。
 
 **影响**
 - 新用户默认看到普通“默认”字体入口，不需要理解“中文优化 / 中文宋体”预设。
