@@ -3,6 +3,7 @@ use std::{
   sync::Mutex,
 };
 
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 use tauri::{Emitter, Manager};
 
 struct OpenedPaths(Mutex<Vec<String>>);
@@ -35,28 +36,28 @@ pub fn run() {
     })
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
-    .run(|app, event| {
+    .run(|_app, _event| {
       #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
-      if let tauri::RunEvent::Opened { urls } = event {
+      if let tauri::RunEvent::Opened { urls } = _event {
         let paths = opened_paths_from_urls(urls);
         if paths.is_empty() {
           return;
         }
 
-        app
+        _app
           .state::<OpenedPaths>()
           .0
           .lock()
           .unwrap()
           .extend(paths.clone());
 
-        if let Some(window) = app.get_webview_window("main") {
+        if let Some(window) = _app.get_webview_window("main") {
           let _ = window.unminimize();
           let _ = window.show();
           let _ = window.set_focus();
         }
 
-        let _ = app.emit("opened-paths", paths);
+        let _ = _app.emit("opened-paths", paths);
       }
     });
 }

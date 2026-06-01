@@ -115,18 +115,19 @@
 
 ### 文档与发布说明
 
-#### ISS-135 v0.3.14 桌面打开与 HTML 阅读修复版本发布
+#### ISS-135 v0.3.15 桌面打开与 HTML 阅读修复版本发布
 
 - **优先级:** P1
 - **类型:** L1
-- **状态:** 已完成，发布中。
-- **问题:** 默认文件打开、HTML 阅读预览和源码编辑修复已经完成；远端最新版本为 `v0.3.13`，需要发布新的补丁版本，同时带上已合入的 Release workflow Gitee 同步超时保护。
+- **状态:** 进行中，待 v0.3.15 Release workflow 复验。
+- **问题:** 默认文件打开、HTML 阅读预览和源码编辑修复已经完成；`v0.3.14` 标签触发的 Release workflow 在 Windows WiX MSI 打包阶段失败，GitHub Release 未公开发布，需要顺延发布新的补丁版本，同时带上已合入的 Release workflow Gitee 同步超时保护。
 - **建议实现:**
-  - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.14`。
-  - 将 `CHANGELOG.md` 的 Unreleased 内容归档到 `0.3.14`。
-  - 完成关键验证后提交并推送 `main`，再创建并推送 `v0.3.14` 标签触发 GitHub Release workflow。
-- **验收:** 远端 `main` 包含版本提交；远端存在 `v0.3.14` 标签；GitHub Actions Release workflow 成功完成；GitHub Release 可访问并包含 `latest.json`。
-- **实现:** 已统一版本号并准备发布记录；本地验证已通过 `git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`，本地 `Info.plist` 已确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联；发布结果待本轮 Release workflow 完成后补充。
+  - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.15`。
+  - 将 `CHANGELOG.md` 的 Unreleased 内容归档到 `0.3.15`。
+  - 将 Windows 文件关联描述改为 WiX 兼容的 ASCII 文本，并增加回归测试。
+  - 完成关键验证后提交并推送 `main`，再创建并推送 `v0.3.15` 标签触发 GitHub Release workflow。
+- **验收:** 远端 `main` 包含版本提交；远端存在 `v0.3.15` 标签；GitHub Actions Release workflow 成功完成；GitHub Release 可访问并包含 `latest.json`。
+- **实现:** `v0.3.14` 已确认未公开发布，失败原因为 Windows MSI `light.exe` 打包阶段；本轮已顺延到 `0.3.15`，将文件关联描述改为 ASCII 并清理 Windows 编译告警。本地验证已通过 `git diff --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`；本地 `Info.plist` 已确认包含 `0.3.15` 版本号和 Markdown / HTML / Word 文件关联。Release workflow 结果待本轮发布完成后补充。
 
 #### ISS-131 Release workflow Gitee 同步超时保护
 
@@ -1128,7 +1129,9 @@
 
 ## 进度日志
 
-- **2026-06-01** 完成 ISS-132 / ISS-133 / ISS-134，并准备发布 ISS-135 / v0.3.14：补齐桌面文件关联和系统打开事件链路，前端启动时优先处理系统传入文件再恢复上次文件；`.html/.htm` 文件改为提取正文后安全直读预览，保留受控对齐、垂直对齐和空白样式；HTML 阅读页进入“编辑源码”新增真实 CodeMirror 回归保护，确保源码编辑区拿到当前原始文件内容。版本号已统一到 `0.3.14`；验证：`git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check`、`npm run tauri:build:local` 均通过；本地 `Info.plist` 已确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联。Release run 结果待本轮发布完成后补充。
+- **2026-06-01** 顺延 ISS-135 到 v0.3.15：`v0.3.14` 标签触发的 Release run `26736730556` 中 macOS 产物成功，但 Windows MSI 在 WiX `light.exe` 阶段失败，publish job 被跳过且 GitHub Release 未公开发布。本轮保留文件关联能力，将 Windows 文件类型描述改为 ASCII 兼容文本，清理 Windows 编译告警，并把版本号统一到 `0.3.15`。本地验证已通过 `git diff --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`；Release run 结果待本轮发布完成后补充。
+
+- **2026-06-01** 完成 ISS-132 / ISS-133 / ISS-134，并准备发布 ISS-135 / v0.3.14：补齐桌面文件关联和系统打开事件链路，前端启动时优先处理系统传入文件再恢复上次文件；`.html/.htm` 文件改为提取正文后安全直读预览，保留受控对齐、垂直对齐和空白样式；HTML 阅读页进入“编辑源码”新增真实 CodeMirror 回归保护，确保源码编辑区拿到当前原始文件内容。版本号已统一到 `0.3.14`；验证：`git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check`、`npm run tauri:build:local` 均通过；本地 `Info.plist` 已确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联。Release run `26736730556` 的 Windows MSI 打包失败，改由 v0.3.15 修复后重新发布。
 
 - **2026-05-31** 发布 v0.3.13：推送 `main` 与 annotated tag `v0.3.13`，GitHub Actions Release run `26703759018` 成功构建 macOS aarch64 / macOS x86_64 / Windows 产物，发布 GitHub Release 并上传 `latest.json`。Gitee 附件同步耗时较长但最终完成，发布后补充 ISS-131，将 Gitee 同步降级为带超时的 best-effort 步骤，避免后续发布被镜像上传无限挂起。GitHub Release 地址：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.13
 

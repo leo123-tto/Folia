@@ -2,6 +2,26 @@
 
 ## 第一部分：决策记录
 
+### [DEC-067] - 2026-06-01 - 顺延发布 v0.3.15 并修复 Windows MSI 文件关联打包
+
+**背景**
+`v0.3.14` 标签已推送并触发 Release workflow，但 Windows job 在 Rust release 编译完成后失败于 WiX `light.exe` MSI 打包阶段，导致 publish job 被跳过，GitHub Release 仍停留在只包含 macOS 资产的草稿状态。对比 `v0.3.13` 到 `v0.3.14` 的 Windows 打包差异，新增的 `fileAssociations.description` 会被 Tauri bundler 写入 WiX `<ProgId Description="...">`；本轮配置使用了中文描述，和默认 `en-US` MSI 字符串表不兼容。
+
+**决策**
+- 不改写已推送的 `v0.3.14` 标签，发布版本顺延到 `0.3.15`。
+- 保留 Markdown / HTML / Word 文件关联能力，但将 Windows-only 的 `description` 改为 ASCII 文本，避免 WiX `light.exe` 在 MSI 字符串表阶段失败。
+- 增加文件关联配置回归测试，要求描述文本保持 ASCII 兼容。
+- Rust 运行事件闭包参数改为平台条件下使用，消除 Windows release 编译中的未使用导入和变量告警。
+
+**验证**
+- 已重新执行 `git diff --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`。
+- 本地 macOS `Info.plist` 已确认版本为 `0.3.15`，且仍包含 Markdown / HTML / Word 文件关联。
+- 发布后需确认 `v0.3.15` Release workflow 的 macOS、Windows 和 publish job 均成功，且 Release 包含 `latest.json`。
+
+**影响**
+- 用户实际获取的补丁版本为 `v0.3.15`；内容包含 `v0.3.14` 准备的默认文件打开、HTML 阅读预览和源码编辑修复。
+- Windows `.exe` / `.msi` 仍会注册可打开的文档类型；资源管理器“类型”列显示英文描述。
+
 ### [DEC-066] - 2026-06-01 - 发布 v0.3.14 桌面打开与 HTML 阅读修复版本
 
 **背景**
@@ -14,10 +34,10 @@
 - `CHANGELOG.md` 将本轮修复和 Gitee 同步超时保护归档到 `0.3.14`。
 - 推送 `main` 后创建并推送 `v0.3.14` 标签，由现有 GitHub Actions Release workflow 构建 macOS ARM / Intel 与 Windows 产物、生成 `latest.json` 并发布 GitHub Release。
 
-**验证**
+**验证与结果**
 - 发布前已通过 `git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check`。
 - 已通过 `npm run tauri:build:local` 生成本地 macOS `.app` 与 `.dmg`；`Info.plist` 确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联。
-- 发布后确认 GitHub Actions Release run 完成，并确认 GitHub Release `v0.3.14` 可访问。
+- GitHub Actions Release run `26736730556` 中 macOS ARM / Intel 成功，Windows job 失败于 WiX `light.exe` MSI 打包，publish job 被跳过；`v0.3.14` 未公开发布，改由 `v0.3.15` 修复后重新发布。
 
 **影响**
 - 用户可通过 GitHub Release / 自动更新获取默认文件打开、HTML 阅读预览和源码编辑修复。
