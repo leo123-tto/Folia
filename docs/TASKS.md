@@ -132,7 +132,7 @@
 
 - **优先级:** P1
 - **类型:** L1
-- **状态:** 进行中。
+- **状态:** 已完成。
 - **问题:** `v0.3.16` 已公开发布，但用户确认双击 Markdown 打开和源码编辑仍未实际生效；ISS-136 已修复，需要发布新的补丁版本供用户更新。
 - **建议实现:**
   - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.17`。
@@ -140,6 +140,7 @@
   - 提交并推送 `main`，创建并推送 `v0.3.17` 标签触发 Release workflow。
   - 按固定 Release Notes 结构补齐 `v0.3.17` 发布说明，正文不重复一级版本标题。
 - **验收:** GitHub Release workflow 成功完成；`v0.3.17` Release 公开可访问并包含 `latest.json`、macOS 和 Windows 产物；Release Notes 格式符合既定结构。
+- **实现:** 已统一 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock` 版本为 `0.3.17`，并将 ISS-136 修复归档到 `CHANGELOG.md` 的 `0.3.17`。发布前验证通过 `npm test`、`npm run lint`、`npm run build`、`cargo test opened_document`、`cargo check`、`git diff --check` 和 `npm run tauri:build:local`；本地 `Folia.app` 已确认版本号为 `0.3.17`，且仍包含 Markdown / HTML / Word 文件关联。已推送提交 `7c0d8fa` 到 `main`，并推送 annotated tag `v0.3.17`。Release workflow run `26744273771` 已成功完成 macOS Apple Silicon、macOS Intel、Windows 和 publish job；GitHub Release 已公开发布并包含 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.17。Release Notes 已按固定结构补齐，正文未重复一级版本标题。
 
 #### ISS-135 v0.3.16 桌面打开与 HTML 阅读修复版本发布
 

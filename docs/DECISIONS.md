@@ -2,6 +2,28 @@
 
 ## 第一部分：决策记录
 
+### [DEC-070] - 2026-06-01 - 发布 v0.3.17 系统路径打开读写修复版本
+
+**背景**
+`v0.3.16` 已公开发布，但用户确认双击 Markdown 文件仍不能直接显示，HTML 阅读页进入源码编辑仍可能为空。ISS-136 已将根因修复为后端受控读写系统路径，需要发布新的补丁版本供用户更新。
+
+**决策**
+- 发布版本顺延到 `0.3.17`，不改写已公开的 `v0.3.16`。
+- 将 ISS-136 的系统路径后端读写修复作为本次唯一用户可见修复内容，避免混入无关功能。
+- `CHANGELOG.md` 将 Unreleased 修复归档到 `0.3.17`；Release Notes 沿用固定结构：开头摘要、NOTE、Highlights、变更、修复、验证、WARNING、下载和 compare 链接，不写重复一级版本标题。
+
+**验证与结果**
+- 发布前已通过 `npm test`、`npm run lint`、`npm run build`、`cargo test opened_document`、`cargo check`、`git diff --check` 和 `npm run tauri:build:local`。
+- 本地 macOS `Folia.app` 已确认版本号为 `0.3.17`，且仍包含 Markdown / HTML / Word 文件关联。
+- 已推送提交 `7c0d8fa` 到远端 `main`，并推送 annotated tag `v0.3.17`。
+- Release workflow run `26744273771` 已成功完成，macOS Apple Silicon、macOS Intel、Windows 和 publish job 均为 success。
+- GitHub Release 已公开发布并包含 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.17
+- `v0.3.17` Release Notes 已补齐，正文未重复版本标题。
+
+**影响**
+- 用户可通过 GitHub Release 或自动更新获取系统双击打开和源码编辑实际读取链路修复。
+- `v0.3.16` 保留为历史版本；后续排查默认打开问题时应以 `v0.3.17` 作为最低有效修复版本。
+
 ### [DEC-069] - 2026-06-01 - 系统路径打开改由 Rust 后端读写文档内容
 
 **背景**
