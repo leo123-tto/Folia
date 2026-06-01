@@ -5,14 +5,16 @@ import { useSettings } from '../hooks/useSettings';
 import { detectMarkdownRenderFeatures } from '../services/markdownFeatureDetector';
 import { resolvePreviewFontFamily } from '../services/settingsService';
 import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
+import { createHtmlReadingPreviewHtml } from '../services/htmlReadingPreviewService';
 
 type PreviewPaneProps = {
   source: string;
   tocIds: TocItem[];
   wideTables?: boolean;
+  renderMode?: 'markdown' | 'html';
 };
 
-export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneProps) {
+export function PreviewPane({ source, tocIds, wideTables = false, renderMode = 'markdown' }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const deferredSource = useDeferredValue(source);
   const deferredTocIds = useDeferredValue(tocIds);
@@ -29,6 +31,12 @@ export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneP
 
     if (deferredSource.trim() === '') {
       el.replaceChildren();
+      return;
+    }
+
+    if (renderMode === 'html') {
+      el.innerHTML = createHtmlReadingPreviewHtml(deferredSource);
+      applyTocIds(el, deferredTocIds);
       return;
     }
 
@@ -58,13 +66,7 @@ export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneP
         },
         after() {
           if (cancelled || deferredTocIds.length === 0) return;
-          const headings = el.querySelectorAll('h1, h2, h3, h4, h5, h6');
-          headings.forEach((h, i) => {
-            const tocItem = deferredTocIds[i];
-            if (tocItem) {
-              h.id = tocItem.id;
-            }
-          });
+          applyTocIds(el, deferredTocIds);
         },
       });
     });
@@ -72,7 +74,7 @@ export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneP
     return () => {
       cancelled = true;
     };
-  }, [deferredSource, deferredTocIds, renderFeatures.hasHighlightableCode]);
+  }, [deferredSource, deferredTocIds, renderFeatures.hasHighlightableCode, renderMode]);
 
   return (
     <div
@@ -91,4 +93,16 @@ export function PreviewPane({ source, tocIds, wideTables = false }: PreviewPaneP
       />
     </div>
   );
+}
+
+function applyTocIds(root: ParentNode, tocIds: TocItem[]): void {
+  if (tocIds.length === 0) return;
+
+  const headings = root.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  headings.forEach((heading, index) => {
+    const tocItem = tocIds[index];
+    if (tocItem) {
+      heading.id = tocItem.id;
+    }
+  });
 }

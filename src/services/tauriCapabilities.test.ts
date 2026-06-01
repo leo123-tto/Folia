@@ -27,4 +27,27 @@ describe('Tauri capabilities', () => {
     expect(csp).toContain("frame-src 'self' data: blob:");
     expect(csp).toContain("connect-src 'self'");
   });
+
+  it('declares desktop file associations for documents Folia can open directly', () => {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), 'src-tauri/tauri.conf.json'), 'utf8'),
+    ) as { bundle?: { fileAssociations?: Array<{ ext?: string[]; mimeType?: string }> } };
+
+    const associations = config.bundle?.fileAssociations ?? [];
+
+    expect(associations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        ext: expect.arrayContaining(['md', 'markdown']),
+        mimeType: 'text/markdown',
+      }),
+      expect.objectContaining({
+        ext: expect.arrayContaining(['html', 'htm']),
+        mimeType: 'text/html',
+      }),
+      expect.objectContaining({
+        ext: expect.arrayContaining(['docx']),
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+    ]));
+  });
 });

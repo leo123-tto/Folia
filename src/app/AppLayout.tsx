@@ -42,6 +42,11 @@ function preloadSettingsPage() {
   return settingsPagePreload;
 }
 
+function preloadSettingsPageInBackground() {
+  if (import.meta.env.MODE === 'test') return;
+  void preloadSettingsPage();
+}
+
 const SettingsPage = lazy(preloadSettingsPage);
 
 const DocxPreviewPane = lazy(() =>
@@ -118,6 +123,7 @@ function toUpdateErrorMessage(error: unknown): string {
 
 export function AppLayout() {
   const settings = useSettings();
+  const isTauriRuntime = '__TAURI_INTERNALS__' in window;
   const t = (key: Parameters<typeof translate>[1]) => translate(settings.locale, key);
   const reopenAttempted = useRef(false);
   const autoUpdateCheckStarted = useRef(false);
@@ -134,6 +140,7 @@ export function AppLayout() {
   const [resizing, setResizing] = useState(false);
   const [htmlPresentationVisible, setHtmlPresentationVisible] = useState(false);
   const [htmlTableEditorVisible, setHtmlTableEditorVisible] = useState(false);
+  const [systemOpenChecked, setSystemOpenChecked] = useState(!isTauriRuntime);
   const [updateState, setUpdateState] = useState<UpdateInstallState>({ phase: 'idle' });
 
   useEffect(() => {
@@ -142,6 +149,8 @@ export function AppLayout() {
   }, [settings.theme]);
 
   useEffect(() => {
+    if (import.meta.env.MODE === 'test') return;
+
     let idleId: number | undefined;
     const timeout = window.setTimeout(() => {
       const preload = () => {
@@ -348,7 +357,7 @@ export function AppLayout() {
   }, [handleOpenPath]);
 
   useEffect(() => {
-    if (!('__TAURI_INTERNALS__' in window)) return;
+    if (!isTauriRuntime) return;
 
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -372,10 +381,61 @@ export function AppLayout() {
       cancelled = true;
       unlisten?.();
     };
-  }, [handleOpenPath]);
+  }, [handleOpenPath, isTauriRuntime]);
 
   useEffect(() => {
-    if (!settings.reopenLastFile || file.path || reopenAttempted.current) return;
+    if (!isTauriRuntime) return;
+
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+
+    const openFirstSystemPath = (paths: unknown) => {
+      if (!Array.isArray(paths)) return;
+      const path = firstOpenableDocumentPath(paths.filter((candidate): candidate is string => (
+        typeof candidate === 'string'
+      )));
+      if (!path) return;
+
+      reopenAttempted.current = true;
+      void handleOpenPath(path).catch((error) => {
+        console.warn('Failed to open system file:', error);
+      });
+    };
+
+    void Promise.all([
+      import('@tauri-apps/api/core'),
+      import('@tauri-apps/api/event'),
+    ]).then(async ([{ invoke }, { listen }]) => {
+      const listener = await listen<string[]>('opened-paths', (event) => {
+        openFirstSystemPath(event.payload);
+      });
+
+      if (cancelled) {
+        listener();
+        return;
+      }
+
+      unlisten = listener;
+      const pendingPaths = await invoke<string[]>('pending_opened_paths');
+      if (!cancelled) {
+        openFirstSystemPath(pendingPaths);
+        setSystemOpenChecked(true);
+      }
+    }).catch((error) => {
+      if (!cancelled) {
+        console.warn('Failed to bind system file open:', error);
+        setSystemOpenChecked(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [handleOpenPath, isTauriRuntime]);
+
+  useEffect(() => {
+    if (!systemOpenChecked || !settings.reopenLastFile || file.path || reopenAttempted.current) return;
     const lastPath = getLastOpenedPath();
     if (!lastPath) return;
     reopenAttempted.current = true;
@@ -400,10 +460,10 @@ export function AppLayout() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, [file.path, handleOpenPath, settings.reopenLastFile]);
+  }, [file.path, handleOpenPath, settings.reopenLastFile, systemOpenChecked]);
 
   useEffect(() => {
-    if (!settings.autoUpdateCheck || autoUpdateCheckStarted.current || !('__TAURI_INTERNALS__' in window)) return;
+    if (!settings.autoUpdateCheck || autoUpdateCheckStarted.current || !isTauriRuntime) return;
 
     return scheduleDelayedAutoUpdateCheck({
       hasStarted: () => autoUpdateCheckStarted.current,
@@ -413,7 +473,7 @@ export function AppLayout() {
       checkForAppUpdate,
       onUpdateAvailable: (result) => startBackgroundUpdateDownload('auto', result),
     });
-  }, [settings.autoUpdateCheck, startBackgroundUpdateDownload]);
+  }, [isTauriRuntime, settings.autoUpdateCheck, startBackgroundUpdateDownload]);
 
   useEffect(() => {
     if (!settings.autoSave || !file.path || !file.dirty || file.fileType === 'docx') return;
@@ -427,12 +487,12 @@ export function AppLayout() {
   }, [file, settings.autoSave]);
 
   useEffect(() => {
-    if (!('__TAURI_INTERNALS__' in window)) return;
+    if (!isTauriRuntime) return;
     const title = file.dirty ? `* ${file.name}` : file.name;
     void getCurrentWindow()
       .setTitle(title)
       .catch((error) => console.warn('Failed to update window title:', error));
-  }, [file.dirty, file.name]);
+  }, [file.dirty, file.name, isTauriRuntime]);
 
   const isDocx = file.fileType === 'docx';
   const updateToolbarStatus = updateState.phase === 'ready' || updateState.phase === 'installing'
@@ -576,7 +636,12 @@ export function AppLayout() {
         </div>
       </div>
       <Suspense fallback={<div className="preview-shell html-preview-pane" aria-label={t('htmlReadingTitle')} />}>
-        <PreviewPane source={file.content} tocIds={toc} wideTables />
+        <PreviewPane
+          source={file.content}
+          tocIds={toc}
+          wideTables
+          renderMode={file.fileType === 'html' ? 'html' : 'markdown'}
+        />
       </Suspense>
     </div>
   ) : (
@@ -632,9 +697,7 @@ export function AppLayout() {
           void preloadSettingsPage();
           setSettingsVisible(true);
         }}
-        onPreloadSettings={() => {
-          void preloadSettingsPage();
-        }}
+        onPreloadSettings={preloadSettingsPageInBackground}
         updateStatus={updateToolbarStatus}
         onRestartUpdate={handleRestartUpdate}
       />

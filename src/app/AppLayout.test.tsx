@@ -18,14 +18,48 @@ const tauriWindowMock = vi.hoisted(() => ({
   setTitle: vi.fn().mockResolvedValue(undefined),
 }));
 
+const tauriCoreMock = vi.hoisted(() => ({
+  invoke: vi.fn(),
+}));
+
+const tauriEventMock = vi.hoisted(() => ({
+  listen: vi.fn(),
+}));
+
+const fileServiceMock = vi.hoisted(() => ({
+  openFile: vi.fn(),
+  openPath: vi.fn(),
+  saveFile: vi.fn(),
+  saveFileAs: vi.fn(),
+}));
+
+const editorPaneMock = vi.hoisted(() => ({
+  source: '',
+  renderCount: 0,
+}));
+
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => tauriWindowMock,
 }));
+
+vi.mock('@tauri-apps/api/core', () => tauriCoreMock);
+
+vi.mock('@tauri-apps/api/event', () => tauriEventMock);
+
+vi.mock('../services/fileService', () => fileServiceMock);
 
 vi.mock('../services/updateService', () => ({
   checkForAppUpdate: updateServiceMock.checkForAppUpdate,
   downloadAppUpdate: updateServiceMock.downloadAppUpdate,
   installDownloadedAppUpdate: updateServiceMock.installDownloadedAppUpdate,
+}));
+
+vi.mock('../components/EditorPane', () => ({
+  EditorPane: ({ source }: { source: string }) => {
+    editorPaneMock.source = source;
+    editorPaneMock.renderCount += 1;
+    return null;
+  },
 }));
 
 vi.mock('../components/WysiwygEditorPane', () => ({
@@ -49,6 +83,21 @@ describe('AppLayout update flow', () => {
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
+    tauriWindowMock.onDragDropEvent.mockResolvedValue(vi.fn());
+    tauriWindowMock.setTitle.mockResolvedValue(undefined);
+    tauriCoreMock.invoke.mockResolvedValue([]);
+    tauriEventMock.listen.mockResolvedValue(vi.fn());
+    fileServiceMock.openFile.mockResolvedValue(null);
+    fileServiceMock.openPath.mockImplementation(async (path: string) => ({
+      path,
+      name: path.split('/').pop() ?? '未命名',
+      content: '# 系统打开文件',
+      dirty: false,
+      lastSavedContent: '# 系统打开文件',
+      fileType: 'markdown',
+    }));
+    editorPaneMock.source = '';
+    editorPaneMock.renderCount = 0;
   });
 
   afterEach(() => {
@@ -93,5 +142,54 @@ describe('AppLayout update flow', () => {
     });
 
     expect(host.textContent).toContain('重启更新');
+  });
+
+  it('opens a file path delivered by the desktop system open event', async () => {
+    tauriCoreMock.invoke.mockResolvedValue(['/tmp/系统打开.md']);
+
+    await act(async () => {
+      root.render(<AppLayout />);
+      await flushPromises();
+      await flushPromises();
+    });
+
+    expect(tauriEventMock.listen).toHaveBeenCalledWith('opened-paths', expect.any(Function));
+    expect(fileServiceMock.openPath).toHaveBeenCalledWith('/tmp/系统打开.md', 'UTF-8');
+  });
+
+  it('passes the current HTML source into the source editor from stable reading mode', async () => {
+    const source = '<!doctype html><html><body><h1>材料</h1><table><tr><td>正文</td></tr></table></body></html>';
+    fileServiceMock.openFile.mockResolvedValue({
+      path: '/tmp/materials.html',
+      name: 'materials.html',
+      content: source,
+      dirty: false,
+      lastSavedContent: source,
+      fileType: 'html',
+    });
+
+    await act(async () => {
+      root.render(<AppLayout />);
+      await flushPromises();
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', metaKey: true }));
+      await flushPromises();
+      await flushPromises();
+    });
+
+    const editSourceButton = Array.from(host.querySelectorAll('button'))
+      .find((button) => button.textContent === '编辑源码');
+    expect(editSourceButton).toBeTruthy();
+
+    await act(async () => {
+      editSourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await flushPromises();
+      await flushPromises();
+    });
+
+    expect(editorPaneMock.renderCount).toBeGreaterThan(0);
+    expect(editorPaneMock.source).toBe(source);
   });
 });

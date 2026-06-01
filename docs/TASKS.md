@@ -30,6 +30,47 @@
 
 ## 待处理
 
+### 桌面打开与 HTML 阅读
+
+#### ISS-134 HTML 阅读页“编辑源码”空白回归保护
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，已复验。
+- **问题:** 在 HTML 阅读页点击“编辑源码”后，源码编辑区可能没有拿到当前文件内容，表现为空白，影响用户从阅读模式回到原始源码编辑。
+- **建议实现:**
+  - 切换源码模式时继续以当前原始文件内容作为 CodeMirror value，不使用清洗后的预览 HTML。
+  - 增加真实 CodeMirror 渲染回归测试，避免 mock 掩盖 value 传递问题。
+- **验收:** HTML 文件从阅读页进入源码模式后能显示原始 HTML；回归测试覆盖真实编辑器文本。
+- **实现:** 新增 `src/app/AppLayoutSourceEditor.test.tsx`，通过真实 CodeMirror DOM 断言 HTML 源码可见；源码切换链路继续复用 `file.content`。
+
+#### ISS-133 HTML 文件阅读预览渲染残留源码符号
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，已复验。
+- **问题:** `.html/.htm` 文件仍沿用 Markdown/Vditor 预览链路时，带完整 `html/body` 结构、右对齐或空白样式的文件可能出现白色源码框、残留 HTML 符号，且对齐和空行语义丢失。
+- **建议实现:**
+  - HTML 文件阅读页直接提取 `<body>` 内容，不再按 Markdown 预览处理完整 HTML 文档。
+  - 使用 DOMPurify 做安全清洗，脚本和危险样式继续阻断。
+  - 在安全范围内保留 `align`、`text-align`、`vertical-align`、`white-space` 等阅读排版语义。
+- **验收:** HTML 阅读页不显示 `html/body` 残留符号或源码框；右对齐、垂直对齐和空行样式按安全白名单保留；单元测试覆盖。
+- **实现:** 新增 `htmlReadingPreviewService` 并接入 `PreviewPane`；`.html/.htm` 文件默认走安全直读预览，HTML table Markdown 仍保留既有 Vditor 稳定阅读链路。
+
+#### ISS-132 默认文件关联双击打开文件不加载
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，已复验。
+- **问题:** 用户将 Folia 设置为默认 Markdown 打开应用后，双击 Markdown 文件不会直接加载，只能拖入应用后显示。Windows 版本也需要能通过系统文件关联打开文件。
+- **建议实现:**
+  - Tauri 打包配置注册 Markdown、HTML 和 Word 文件关联。
+  - 启动时读取系统传入的命令行文件路径。
+  - macOS 运行中监听系统打开事件，收到 Finder 打开的文件后聚焦窗口并加载。
+  - 前端启动时优先处理系统传入文件，再恢复上次打开文件，避免覆盖用户双击的文件。
+- **验收:** 打包后的应用包含 `.md/.markdown/.html/.htm/.docx` 文件关联；系统传入路径会打开对应文件；恢复上次文件不会抢先覆盖系统打开文件；测试覆盖。
+- **实现:** `src-tauri/src/lib.rs` 新增 `pending_opened_paths` 命令和 `opened-paths` 事件桥接；`AppLayout` 等待系统打开检查完成后再恢复上次文件；Tauri 配置新增文件关联；新增前端和 capability 回归测试。
+
 ### Word 导出预设
 
 #### ISS-129 内置公文与学术论文 Word 预设精细化
@@ -73,6 +114,19 @@
 - **实现:** 已扩展 Word JSON 完整模板；导入层兼容 md2word 风格字段别名、颜色清洗和单位转换；DOCX 导出与纸张预览补齐页码、标题字体、表格背景/对齐/四边距和图片标题映射。Code review 后补齐“仅包含 `table.cell_margin.top/bottom/left/right` 的 md2word JSON”识别路径，并将未设置的预览表格背景回退为透明。已通过 `npm run typecheck`、`npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。
 
 ### 文档与发布说明
+
+#### ISS-135 v0.3.14 桌面打开与 HTML 阅读修复版本发布
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，发布中。
+- **问题:** 默认文件打开、HTML 阅读预览和源码编辑修复已经完成；远端最新版本为 `v0.3.13`，需要发布新的补丁版本，同时带上已合入的 Release workflow Gitee 同步超时保护。
+- **建议实现:**
+  - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.14`。
+  - 将 `CHANGELOG.md` 的 Unreleased 内容归档到 `0.3.14`。
+  - 完成关键验证后提交并推送 `main`，再创建并推送 `v0.3.14` 标签触发 GitHub Release workflow。
+- **验收:** 远端 `main` 包含版本提交；远端存在 `v0.3.14` 标签；GitHub Actions Release workflow 成功完成；GitHub Release 可访问并包含 `latest.json`。
+- **实现:** 已统一版本号并准备发布记录；本地验证已通过 `git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local`，本地 `Info.plist` 已确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联；发布结果待本轮 Release workflow 完成后补充。
 
 #### ISS-131 Release workflow Gitee 同步超时保护
 
@@ -1073,6 +1127,8 @@
 - **实现:** 新增 `src/services/word/docxXml.test.ts`，使用 `markdownToDocx()` 生成真实 `.docx` Blob，并通过 JSZip 解压检查 `word/document.xml` 中的 `w:gridSpan`、`w:vMerge`、`w:tblHeader` 和表格行数。测试同时发现 HTML 表格正文行会输出 `w:tblHeader w:val="false"`，已修正为仅真正的 `thead` 行写入 `tableHeader: true`。
 
 ## 进度日志
+
+- **2026-06-01** 完成 ISS-132 / ISS-133 / ISS-134，并准备发布 ISS-135 / v0.3.14：补齐桌面文件关联和系统打开事件链路，前端启动时优先处理系统传入文件再恢复上次文件；`.html/.htm` 文件改为提取正文后安全直读预览，保留受控对齐、垂直对齐和空白样式；HTML 阅读页进入“编辑源码”新增真实 CodeMirror 回归保护，确保源码编辑区拿到当前原始文件内容。版本号已统一到 `0.3.14`；验证：`git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check`、`npm run tauri:build:local` 均通过；本地 `Info.plist` 已确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联。Release run 结果待本轮发布完成后补充。
 
 - **2026-05-31** 发布 v0.3.13：推送 `main` 与 annotated tag `v0.3.13`，GitHub Actions Release run `26703759018` 成功构建 macOS aarch64 / macOS x86_64 / Windows 产物，发布 GitHub Release 并上传 `latest.json`。Gitee 附件同步耗时较长但最终完成，发布后补充 ISS-131，将 Gitee 同步降级为带超时的 best-effort 步骤，避免后续发布被镜像上传无限挂起。GitHub Release 地址：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.13
 

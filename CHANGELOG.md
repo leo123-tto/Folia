@@ -4,9 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.14]
+
 ### Changed
 
 - Release workflow 的 Gitee 附件同步改为带超时的 best-effort 步骤：GitHub Release 和 `latest.json` 仍是发布主路径，Gitee 上传过慢或失败时不再无限挂起后续发布流程。
+
+### Fixed
+
+- 修复将 Folia 设为 Markdown / HTML / Word 默认打开应用后，双击文件不会直接加载的问题；macOS 运行中打开文件会进入同一窗口，Windows 启动参数打开链路也会读取系统传入路径。
+- 修复 `.html` 文件预览仍按 Markdown 链路渲染，导致残留 HTML 符号、白色源码框、右对齐和空行语义丢失的问题；HTML 阅读页现在提取正文后走安全直读预览，并保留受控的对齐与空白样式。
+- 修复 HTML 阅读页点击“编辑源码”可能显示空白的问题，新增真实 CodeMirror 渲染回归保护，确保源码编辑区拿到当前完整文档内容。
 
 ## [0.3.13]
 

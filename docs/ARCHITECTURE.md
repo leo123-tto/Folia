@@ -45,7 +45,7 @@
 ```
 用户打开文件
   ↓
-通过对话框、快捷键或 Tauri 原生文件拖放事件取得路径
+通过对话框、快捷键、系统文件关联、启动参数或 Tauri 原生文件拖放事件取得路径
   ↓
 按需加载 fileService，再通过 Tauri plugin-fs 读取文本
   ↓
@@ -55,7 +55,7 @@ documentViewMode 检测文件类型与原生 HTML table
   ↓
 ┌─ WysiwygEditorPane: 普通 Markdown 默认懒加载 Vditor IR 即时渲染模式，input(value) 更新 state
 │
-├─ PreviewPane: 原生 HTML table / .html 文件使用 Vditor.preview() 稳定阅读预览，AppLayout 提供“编辑表格”和“编辑源码”入口
+├─ PreviewPane: 原生 HTML table 使用 Vditor.preview() 稳定阅读预览；.html 文件提取 body 后走安全 HTML 阅读预览；AppLayout 提供“编辑表格”和“编辑源码”入口
 │    └─ HtmlTableEditor: 选择单个 table block，编辑 HtmlTableModel，保存时只替换该 block
 │
 ├─ EditorPane: 用户点击“源码模式”后才懒加载 CodeMirror，onChange 更新 state
@@ -125,6 +125,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | `htmlTableModel.ts` | 将单个原生 HTML table 解析为共享结构模型，保留行列坐标、合并单元格、section、单元格 HTML/文本与属性 |
 | `htmlTableBlockService.ts` | 从 Markdown / HTML 源码中定位和替换单个 `<table>...</table>` 区块，忽略 fenced code 中的表格文本 |
 | `htmlTableEditorService.ts` | 结构化编辑器的纯函数操作：更新 origin cell HTML、追加行列、保守删除行列，并在写回前重建 grid |
+| `htmlReadingPreviewService.ts` | `.html/.htm` 安全阅读预览服务：提取 `<body>` 内容，DOMPurify 清洗后仅保留受控的对齐、垂直对齐和空白样式 |
 | `titlebarDrag.ts` | 自定义 overlay Toolbar 的拖动 fallback，过滤按钮后调用 Tauri `startDragging()` / `toggleMaximize()` |
 | `markdownFeatureDetector.ts` | 轻量扫描 Markdown fenced code 类型，为 Vditor 预览提供内部资源触发判断 |
 | `vditorPreviewConfig.ts` | 按需提供 Vditor.preview 所需中文文案，避免纯预览链路额外请求 i18n 脚本 |
@@ -162,7 +163,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 | 文件 | 职责 |
 |------|------|
-| `AppLayout.tsx` | 主布局，管理文件状态、TOC 提取与浮动大纲状态、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换、Word 预览面板和后台更新下载状态 |
+| `AppLayout.tsx` | 主布局，管理文件状态、系统文件打开事件、TOC 提取与浮动大纲状态、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换、Word 预览面板和后台更新下载状态 |
 | `App.tsx` | 入口组件 |
 
 ## 启动性能策略
@@ -216,6 +217,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 ## Tauri 配置
 
 - 窗口：980×680，可调整大小
+- 文件关联：打包配置注册 `.md` / `.markdown` / `.html` / `.htm` / `.docx`。启动时 Rust 侧从命令行参数收集可打开文件，macOS 运行中通过 Tauri `Opened` 事件接收 Finder 再次打开的文件，并通过 `pending_opened_paths` / `opened-paths` 传给前端；前端优先处理系统传入文件，再恢复上次打开文件。
 - macOS 标题栏：`titleBarStyle: Overlay` + `hiddenTitle: true`，系统红黄绿按钮覆盖在 WebView 顶部，前端 Toolbar 预留左侧空间；中间空白和居中文件标题使用 `data-tauri-drag-region`，整条 Toolbar 提供 JS `startDragging()` fallback；双击空白区域调用 `toggleMaximize()`；不使用 Electron 风格 `-webkit-app-region`
 - CSP：`default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' file:; connect-src 'self'; media-src 'self' file:; frame-src 'self' data: blob:`。HTML 演示模式的同目录 JS / CSS / 图片优先内联到 iframe 文档；`file:` 仅作为图片、字体和媒体资源兜底，外部网络连接仍由 `connect-src 'self'` 默认阻断。
 - 插件权限：dialog:allow-open, dialog:allow-save, fs:allow-read-text-file, fs:allow-write-text-file, updater:default, process:allow-restart, core:window:allow-set-title, core:window:allow-start-dragging, core:window:allow-toggle-maximize

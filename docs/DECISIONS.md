@@ -2,6 +2,46 @@
 
 ## 第一部分：决策记录
 
+### [DEC-066] - 2026-06-01 - 发布 v0.3.14 桌面打开与 HTML 阅读修复版本
+
+**背景**
+远端最新版本已经是 `v0.3.13`，本轮修复了用户反馈的三类直接影响阅读入口的问题：系统默认打开 Markdown 文件后双击不加载、HTML 文件阅读预览仍暴露源码符号和白色框、HTML 阅读页进入“编辑源码”后内容为空。另有 `main` 上已合入但尚未发布的 Release workflow Gitee 同步超时保护，需要一起进入下一个补丁版本。
+
+**决策**
+- 发布版本号使用 `0.3.14`，不复用已有 `v0.3.13` 标签。
+- 从远端最新 `main` 创建发布分支，移入本轮桌面打开与 HTML 阅读修复，避免把本地旧分支上的未发布设置页懒加载提交混入本次 Release。
+- 同步更新 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 和 `src-tauri/Cargo.lock` 中 Folia 自身版本。
+- `CHANGELOG.md` 将本轮修复和 Gitee 同步超时保护归档到 `0.3.14`。
+- 推送 `main` 后创建并推送 `v0.3.14` 标签，由现有 GitHub Actions Release workflow 构建 macOS ARM / Intel 与 Windows 产物、生成 `latest.json` 并发布 GitHub Release。
+
+**验证**
+- 发布前已通过 `git diff --cached --check`、`npm run typecheck`、`npm test`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check`。
+- 已通过 `npm run tauri:build:local` 生成本地 macOS `.app` 与 `.dmg`；`Info.plist` 确认包含 `0.3.14` 版本号和 Markdown / HTML / Word 文件关联。
+- 发布后确认 GitHub Actions Release run 完成，并确认 GitHub Release `v0.3.14` 可访问。
+
+**影响**
+- 用户可通过 GitHub Release / 自动更新获取默认文件打开、HTML 阅读预览和源码编辑修复。
+
+### [DEC-065] - 2026-06-01 - 系统打开事件优先于上次文件恢复，HTML 文件走安全直读预览
+
+**背景**
+用户把 Folia 设置成默认 Markdown 打开软件后，双击文件不会直接进入当前文档，只能拖入后显示。排查同时发现 `.html/.htm` 文件仍沿用 Markdown/Vditor 渲染链路，包含 `html/body` 结构或带对齐、空行样式的内容时，阅读页可能出现源码残留、白色框和排版语义丢失；HTML 阅读页的“编辑源码”还存在进入 CodeMirror 后内容为空的回归风险。
+
+**决策**
+- Tauri 打包注册 `.md`、`.markdown`、`.html`、`.htm` 和 `.docx` 文件关联。
+- Rust 侧启动时从命令行参数收集系统传入文件；macOS 运行中通过 Tauri `Opened` 事件接收 Finder 再次打开的文件，并用 `pending_opened_paths` / `opened-paths` 桥接给前端。
+- 前端启动时先等待系统打开链路完成，再执行“重新打开上次文件”，避免上次文件覆盖用户刚双击的文件。
+- `.html/.htm` 阅读页新增 `htmlReadingPreviewService`：优先提取 `<body>`，DOMPurify 清洗后仅保留受控标签、属性和 `text-align`、`vertical-align`、`white-space` 等安全样式。
+- HTML 阅读页切换“编辑源码”继续使用原始文件内容，不使用清洗后的阅读 HTML，并增加真实 CodeMirror 回归测试。
+
+**验证**
+- 新增 `htmlReadingPreviewService`、Tauri capability、系统打开路径和源码编辑器回归测试。
+- 已随 `npm test`、`npm run typecheck`、`npm run lint`、`npm run build`、`cd src-tauri && cargo check` 和 `npm run tauri:build:local` 一并复验。
+
+**影响**
+- macOS 用户双击关联文件可进入同一窗口；Windows 用户通过文件关联启动 Folia 时会读取系统传入路径并打开文件。
+- HTML 文件默认阅读页更接近浏览器正文阅读效果，但仍不执行脚本；需要运行 HTML 交互内容时仍使用“演示模式”隔离 iframe。
+
 ### [DEC-064] - 2026-05-31 - Gitee Release 同步降级为带超时的 best-effort
 
 **背景**
