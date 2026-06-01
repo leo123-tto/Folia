@@ -47,7 +47,7 @@
   ↓
 通过对话框、快捷键、系统文件关联、启动参数或 Tauri 原生文件拖放事件取得路径
   ↓
-按需加载 fileService，再通过 Tauri plugin-fs 读取文本
+按需加载 fileService；桌面端通过 Rust 命令受控读取文档字节，浏览器预览回退到 Tauri plugin-fs mock
   ↓
 写入 React state (OpenedFile.content)
   ↓
@@ -119,7 +119,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 | 文件 | 职责 |
 |------|------|
-| `fileService.ts` | 封装 Tauri dialog + fs，提供 openFile / saveFile / saveFileAs |
+| `fileService.ts` | 封装 Tauri dialog、桌面端后端文档读写命令与浏览器 fallback，提供 openFile / saveFile / saveFileAs |
 | `fileDrop.ts` | 过滤可拖入打开的 Markdown / HTML / Word 文件路径 |
 | `documentViewMode.ts` | 内部判断文档是否应使用稳定 HTML 阅读预览，避免复杂 HTML table 被 WYSIWYG 压窄或破坏 |
 | `htmlTableModel.ts` | 将单个原生 HTML table 解析为共享结构模型，保留行列坐标、合并单元格、section、单元格 HTML/文本与属性 |
@@ -217,7 +217,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 ## Tauri 配置
 
 - 窗口：980×680，可调整大小
-- 文件关联：打包配置注册 `.md` / `.markdown` / `.html` / `.htm` / `.docx`。启动时 Rust 侧从命令行参数收集可打开文件，macOS 运行中通过 Tauri `Opened` 事件接收 Finder 再次打开的文件，并通过 `pending_opened_paths` / `opened-paths` 传给前端；前端优先处理系统传入文件，再恢复上次打开文件。
+- 文件关联：打包配置注册 `.md` / `.markdown` / `.html` / `.htm` / `.docx`。启动时 Rust 侧从命令行参数收集可打开文件，macOS 运行中通过 Tauri `Opened` 事件接收 Finder 再次打开的文件，并通过 `pending_opened_paths` / `opened-paths` 传给前端；前端优先处理系统传入文件，再恢复上次打开文件。系统传入路径、Tauri 原生拖放路径和重新打开上次文件的内容读取由 Rust `read_opened_document` 完成，避免前端 fs 插件缺少对该路径的授权；已有 Markdown / HTML 路径保存由 `write_opened_document` 写回。
 - macOS 标题栏：`titleBarStyle: Overlay` + `hiddenTitle: true`，系统红黄绿按钮覆盖在 WebView 顶部，前端 Toolbar 预留左侧空间；中间空白和居中文件标题使用 `data-tauri-drag-region`，整条 Toolbar 提供 JS `startDragging()` fallback；双击空白区域调用 `toggleMaximize()`；不使用 Electron 风格 `-webkit-app-region`
 - CSP：`default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' file:; connect-src 'self'; media-src 'self' file:; frame-src 'self' data: blob:`。HTML 演示模式的同目录 JS / CSS / 图片优先内联到 iframe 文档；`file:` 仅作为图片、字体和媒体资源兜底，外部网络连接仍由 `connect-src 'self'` 默认阻断。
-- 插件权限：dialog:allow-open, dialog:allow-save, fs:allow-read-text-file, fs:allow-write-text-file, updater:default, process:allow-restart, core:window:allow-set-title, core:window:allow-start-dragging, core:window:allow-toggle-maximize
+- 插件权限：dialog:allow-open, dialog:allow-save, fs:allow-read-text-file, fs:allow-read-file, fs:allow-write-text-file, fs:allow-write-file, updater:default, process:allow-restart, core:window:allow-set-title, core:window:allow-start-dragging, core:window:allow-toggle-maximize

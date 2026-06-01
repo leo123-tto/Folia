@@ -32,6 +32,19 @@
 
 ### 桌面打开与 HTML 阅读
 
+#### ISS-136 v0.3.16 后双击打开与源码编辑仍未生效
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 已完成，已复验。
+- **问题:** 用户更新到包含 ISS-132 / ISS-134 修复的版本后，双击 Markdown 文件仍不能直接显示，源码编辑页面也仍有空白或显示异常。
+- **建议实现:**
+  - 重新排查系统文件关联传入路径到实际读取文件内容的完整链路，不能只验证文件关联元数据。
+  - 为系统传入路径读取和源码编辑器内容刷新补充更贴近真实运行的回归测试。
+  - 确认修复后再更新发布说明，避免再次发布只修到配置层。
+- **验收:** 双击系统关联的 Markdown / HTML 文件后能直接显示内容；源码编辑页面能稳定显示当前原文件源码；回归测试覆盖失败路径。
+- **实现:** 新增 Rust `read_opened_document` / `write_opened_document` 命令，桌面端 `fileService.openPath` 和已有路径保存优先走后端受控读写，避免系统路径未经过前端文件插件授权时读取或保存失败。新增 `fileService` 红绿回归测试、Rust 命令边界测试和系统打开 HTML 后进入真实 CodeMirror 源码编辑的整链路测试。已通过针对性测试、全量测试、lint、生产构建、`cargo check`、`git diff --check` 和本地 Tauri 打包。
+
 #### ISS-134 HTML 阅读页“编辑源码”空白回归保护
 
 - **优先级:** P1
@@ -114,6 +127,19 @@
 - **实现:** 已扩展 Word JSON 完整模板；导入层兼容 md2word 风格字段别名、颜色清洗和单位转换；DOCX 导出与纸张预览补齐页码、标题字体、表格背景/对齐/四边距和图片标题映射。Code review 后补齐“仅包含 `table.cell_margin.top/bottom/left/right` 的 md2word JSON”识别路径，并将未设置的预览表格背景回退为透明。已通过 `npm run typecheck`、`npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。
 
 ### 文档与发布说明
+
+#### ISS-137 v0.3.17 系统路径打开读写修复版本发布
+
+- **优先级:** P1
+- **类型:** L1
+- **状态:** 进行中。
+- **问题:** `v0.3.16` 已公开发布，但用户确认双击 Markdown 打开和源码编辑仍未实际生效；ISS-136 已修复，需要发布新的补丁版本供用户更新。
+- **建议实现:**
+  - 将前端、Tauri、Rust crate 和 lockfile 版本统一到 `0.3.17`。
+  - 将 `CHANGELOG.md` 的 Unreleased 内容归档到 `0.3.17`。
+  - 提交并推送 `main`，创建并推送 `v0.3.17` 标签触发 Release workflow。
+  - 按固定 Release Notes 结构补齐 `v0.3.17` 发布说明，正文不重复一级版本标题。
+- **验收:** GitHub Release workflow 成功完成；`v0.3.17` Release 公开可访问并包含 `latest.json`、macOS 和 Windows 产物；Release Notes 格式符合既定结构。
 
 #### ISS-135 v0.3.16 桌面打开与 HTML 阅读修复版本发布
 

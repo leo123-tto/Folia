@@ -2,6 +2,28 @@
 
 ## 第一部分：决策记录
 
+### [DEC-069] - 2026-06-01 - 系统路径打开改由 Rust 后端读写文档内容
+
+**背景**
+用户确认更新到 `v0.3.16` 后，将 Folia 设为默认 Markdown 打开应用并双击文件仍不能直接显示，HTML 阅读页进入“编辑源码”也仍可能为空。复查发现上一轮主要验证了文件关联注册、系统打开事件传递和前端状态时序，但实际读取仍由前端 `@tauri-apps/plugin-fs` 完成。系统文件关联或启动参数传入的路径没有经过打开对话框的前端文件授权，可能在读文件阶段被拦截；拖入或对话框打开能显示，不能证明双击路径也能读。
+
+**决策**
+- 新增 Rust `read_opened_document` 命令，后端只读取 Folia 支持的 `.md` / `.markdown` / `.html` / `.htm` / `.docx` 文件并返回字节。
+- 新增 Rust `write_opened_document` 命令，已有路径保存只允许写回 `.md` / `.markdown` / `.html` / `.htm` 文本文档，`.docx` 继续保持只读。
+- 桌面端 `fileService.openPath`、重新打开上次文件、系统文件关联打开和 Tauri 原生拖放路径统一经后端读取；前端保留编码解码、文件类型判断和 docx 转 HTML 预览。
+- `saveFile` 在桌面端写回已有路径时走后端命令，避免系统路径打开成功后保存又被前端文件插件权限阻断；`saveFileAs` 仍通过系统保存对话框和 plugin-fs 写入新路径。
+
+**验证**
+- 新增失败先行的 `src/services/fileService.test.ts`，确认 Tauri 运行时即使前端 fs 插件拒绝读取/写入，`openPath` / `saveFile` 也会调用后端命令。
+- 新增 `src/app/AppLayoutSystemOpenSource.test.tsx`，覆盖 `pending_opened_paths` 传入 HTML 路径、后端读取原始源码、点击“编辑源码”后真实 CodeMirror 显示原文件源码的完整链路。
+- Rust 单元测试覆盖支持扩展名读取、拒绝非文档扩展、支持 HTML/Markdown 写回和拒绝写回 docx。
+- 已通过 `npm test -- src/app/AppLayoutSystemOpenSource.test.tsx src/app/AppLayoutSourceEditor.test.tsx src/app/AppLayout.test.tsx src/services/fileService.test.ts src/services/htmlReadingPreviewService.test.ts`、`cargo test opened_document`、`npm test`、`npm run lint`、`npm run build`、`cargo check`、`git diff --check` 和 `npm run tauri:build:local`。
+- 本地打包产物 `Folia.app` 的 `Info.plist` 已确认仍包含 Markdown / HTML / Word 文件关联。
+
+**影响**
+- 双击系统关联文件、启动参数打开、Tauri 原生拖放和重新打开上次文件不再依赖前端文件插件对该路径的授权状态。
+- 源码编辑器拿到的是后端读取的原始文件内容，HTML 阅读预览中的清洗结果不会反向污染源码编辑。
+
 ### [DEC-068] - 2026-06-01 - 顺延发布 v0.3.16 并修复 Windows 编译回归
 
 **背景**

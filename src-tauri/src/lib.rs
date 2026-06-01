@@ -16,6 +16,26 @@ fn pending_opened_paths(app: tauri::AppHandle) -> Vec<String> {
   std::mem::take(&mut *paths)
 }
 
+#[tauri::command]
+fn read_opened_document(path: String) -> Result<Vec<u8>, String> {
+  let path = PathBuf::from(path);
+  if !is_openable_document_path(&path) {
+    return Err("unsupported document type".into());
+  }
+
+  std::fs::read(&path).map_err(|error| format!("failed to read document: {error}"))
+}
+
+#[tauri::command]
+fn write_opened_document(path: String, content: String) -> Result<(), String> {
+  let path = PathBuf::from(path);
+  if !is_writable_document_path(&path) {
+    return Err("unsupported document type".into());
+  }
+
+  std::fs::write(&path, content).map_err(|error| format!("failed to write document: {error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -24,7 +44,11 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![pending_opened_paths])
+    .invoke_handler(tauri::generate_handler![
+      pending_opened_paths,
+      read_opened_document,
+      write_opened_document
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -101,4 +125,68 @@ fn is_openable_document_path(path: &Path) -> bool {
       .as_deref(),
     Some("md" | "markdown" | "html" | "htm" | "docx")
   )
+}
+
+fn is_writable_document_path(path: &Path) -> bool {
+  matches!(
+    path
+      .extension()
+      .and_then(|extension| extension.to_str())
+      .map(|extension| extension.to_ascii_lowercase())
+      .as_deref(),
+    Some("md" | "markdown" | "html" | "htm")
+  )
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn temp_path(name: &str) -> PathBuf {
+    std::env::temp_dir().join(format!("folia-{}-{}", std::process::id(), name))
+  }
+
+  #[test]
+  fn read_opened_document_reads_supported_document_bytes() {
+    let path = temp_path("opened.md");
+    std::fs::write(&path, b"# opened").unwrap();
+
+    let bytes = read_opened_document(path.to_string_lossy().to_string()).unwrap();
+
+    assert_eq!(bytes, b"# opened");
+    let _ = std::fs::remove_file(path);
+  }
+
+  #[test]
+  fn read_opened_document_rejects_unsupported_extensions() {
+    let path = temp_path("secret.txt");
+    std::fs::write(&path, b"secret").unwrap();
+
+    let error = read_opened_document(path.to_string_lossy().to_string()).unwrap_err();
+
+    assert!(error.contains("unsupported document type"));
+    let _ = std::fs::remove_file(path);
+  }
+
+  #[test]
+  fn write_opened_document_writes_supported_text_documents() {
+    let path = temp_path("saved.html");
+    std::fs::write(&path, b"before").unwrap();
+
+    write_opened_document(path.to_string_lossy().to_string(), "<h1>after</h1>".into()).unwrap();
+
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "<h1>after</h1>");
+    let _ = std::fs::remove_file(path);
+  }
+
+  #[test]
+  fn write_opened_document_rejects_docx() {
+    let path = temp_path("saved.docx");
+    std::fs::write(&path, b"before").unwrap();
+
+    let error = write_opened_document(path.to_string_lossy().to_string(), "after".into()).unwrap_err();
+
+    assert!(error.contains("unsupported document type"));
+    let _ = std::fs::remove_file(path);
+  }
 }
