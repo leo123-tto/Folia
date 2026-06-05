@@ -55,7 +55,7 @@ documentViewMode 检测文件类型与原生 HTML table
   ↓
 ┌─ WysiwygEditorPane: 普通 Markdown 默认懒加载 Vditor IR 即时渲染模式，input(value) 更新 state
 │
-├─ PreviewPane: 原生 HTML table 使用 Vditor.preview() 稳定阅读预览；.html 文件提取 body 后走安全 HTML 阅读预览；AppLayout 提供“编辑表格”和“编辑源码”入口
+├─ PreviewPane: 原生 HTML table 使用 Vditor.preview() 稳定阅读预览；.html 文件提取 body 后走安全 HTML 阅读预览；AppLayout 提供“编辑表格”“编辑源码”和 Markdown 文档退出 HTML 预览入口
 │    └─ HtmlTableEditor: 选择单个 table block，编辑 HtmlTableModel，保存时只替换该 block
 │
 ├─ EditorPane: 用户点击“源码模式”后才懒加载 CodeMirror，onChange 更新 state
@@ -121,7 +121,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 |------|------|
 | `fileService.ts` | 封装 Tauri dialog、桌面端后端文档读写命令与浏览器 fallback，提供 openFile / saveFile / saveFileAs |
 | `fileDrop.ts` | 过滤可拖入打开的 Markdown / HTML / Word 文件路径 |
-| `documentViewMode.ts` | 内部判断文档是否应使用稳定 HTML 阅读预览，避免复杂 HTML table 被 WYSIWYG 压窄或破坏 |
+| `documentViewMode.ts` | 内部判断文档是否默认应使用稳定 HTML 阅读预览，避免复杂 HTML table 被 WYSIWYG 压窄或破坏；用户手动退出由 AppLayout 的当前文档状态处理 |
 | `htmlTableModel.ts` | 将单个原生 HTML table 解析为共享结构模型，保留行列坐标、合并单元格、section、单元格 HTML/文本与属性 |
 | `htmlTableBlockService.ts` | 从 Markdown / HTML 源码中定位和替换单个 `<table>...</table>` 区块，忽略 fenced code 中的表格文本 |
 | `htmlTableEditorService.ts` | 结构化编辑器的纯函数操作：更新 origin cell HTML、追加行列、保守删除行列，并在写回前重建 grid |
@@ -147,15 +147,15 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 | 文件 | 职责 |
 |------|------|
-| `EditorPane.tsx` | CodeMirror 6 编辑器，Markdown 语言模式 |
+| `EditorPane.tsx` | CodeMirror 6 编辑器，Markdown 语言模式；接收 TOC 标题跳转请求并滚动到对应源码标题行 |
 | `WysiwygEditorPane.tsx` | Vditor IR 即时渲染编辑器，普通 Markdown 的默认主编辑体验；当前块显示 Markdown 标记，非当前块保持预览观感 |
-| `PreviewPane.tsx` | `Vditor.preview()` 稳定阅读预览，原生 HTML table 和 `.html` 文件默认使用；外层由 AppLayout 提供表格编辑和源码编辑入口 |
+| `PreviewPane.tsx` | `Vditor.preview()` 稳定阅读预览，原生 HTML table 和 `.html` 文件默认使用；外层由 AppLayout 提供表格编辑、源码编辑和 Markdown 文档退出 HTML 预览入口 |
 | `HtmlTableEditor.tsx` | HTML table 结构化编辑 modal：列出 table blocks，网格展示 origin cells，编辑单元格 HTML，并调用 block 替换保存 |
 | `HtmlPresentationPane.tsx` | HTML 演示模式主视图：用 sandbox iframe 运行 `.html/.htm` 文件内容，提供上一页、下一页和返回阅读预览操作 |
 | `WordPaperPreviewPane.tsx` | 按需打开的 Word 多页纸张预览，包含启用预设弹出选择器、面板内导出按钮、A4 分页、长 HTML 表格按行拆页和整体缩放 |
 | `WechatPreviewPane.tsx` | 按需打开的 HTML 预览面板，保留旧文件名作为兼容层；负责 Vditor 渲染、当前 HTML 预设预览、复制到公众号编辑器和导出 HTML |
 | `Toolbar.tsx` | 工具栏：打开 / 保存 / 另存为 / 源码模式 / Word 预览 / HTML 预览 / 下载完成后的重启更新 / 设置 |
-| `FloatingToc.tsx` | 默认浮动大纲：标题层级刻度、hover 展开、轨道点击固定/取消固定、点击跳转和当前标题高亮 |
+| `FloatingToc.tsx` | 默认浮动大纲：标题层级刻度、横条 hover / click / focus 展开、面板内固定 / 取消固定 / 关闭、固定态“总是固定大纲”偏好、点击跳转和当前标题高亮 |
 | `LicenseSection.tsx` | Settings / 授权页面：输入内测码、显示授权状态和可用自定义预设槽位数 |
 | `StatusBar.tsx` | 底部状态栏：文件路径 + dirty 标记 |
 
@@ -163,7 +163,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 | 文件 | 职责 |
 |------|------|
-| `AppLayout.tsx` | 主布局，管理文件状态、系统文件打开事件、TOC 提取与浮动大纲状态、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换、Word 预览面板和后台更新下载状态 |
+| `AppLayout.tsx` | 主布局，管理文件状态、系统文件打开事件、TOC 提取与浮动大纲临时 / 持久固定状态、源码模式 TOC 跳转请求、拖拽打开、快捷键、WYSIWYG/稳定 HTML 预览/源码切换、Markdown 文档手动退出或返回 HTML 阅读预览、Word 预览面板和后台更新下载状态 |
 | `App.tsx` | 入口组件 |
 
 ## 启动性能策略
@@ -209,7 +209,7 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 
 - `npm test`：Vitest 单元测试，覆盖设置迁移、HTML 清洗、Markdown 渲染特征探测。
 - `npm run test:e2e`：Playwright 端到端回归测试，启动 Vite 后验证冷启动、编辑切换、稳定 HTML 阅读预览、Word 预览和 HTML 表格渲染。
-- E2E 重点覆盖：普通 Markdown 默认显示即时渲染编辑器、源码编辑器按需加载且长文档可滚动、原生 HTML table 自动进入稳定阅读预览、结构化编辑器只替换目标 table block、Word 预览按需加载、右侧面板拖拽、Settings 固定尺寸、Floating TOC hover/固定/滚动高亮和复杂 HTML table 不横向溢出。
+- E2E 重点覆盖：普通 Markdown 默认显示即时渲染编辑器、源码编辑器按需加载且长文档可滚动、源码模式 TOC 点击跳转、原生 HTML table 自动进入稳定阅读预览、Markdown table 文档可手动退出并返回 HTML 阅读预览、结构化编辑器只替换目标 table block、Word 预览按需加载、右侧面板拖拽、Settings 固定尺寸、Floating TOC hover/固定/滚动高亮和复杂 HTML table 不横向溢出。
 
 ## Tauri 配置
 

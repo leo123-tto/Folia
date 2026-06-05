@@ -75,6 +75,7 @@ describe('settingsService', () => {
       previewChineseFontFamily: 'Default',
       previewLatinFontFamily: 'Default',
       previewHeadingFontFamily: 'Body',
+      tocAlwaysPinned: false,
     });
 
     localStorage.setItem('folia-settings', '{invalid json');
@@ -83,6 +84,20 @@ describe('settingsService', () => {
     expect(getSettings().autoUpdateCheck).toBe(true);
     expect(getSettings().wechatCustomCss).toBe('');
     expect(getSettings().previewFontFamily).toBe('Default');
+    expect(getSettings().tocAlwaysPinned).toBe(false);
+  });
+
+  it('persists and normalizes the default pinned outline preference', () => {
+    expect(getSettings().tocAlwaysPinned).toBe(false);
+
+    updateSettings({ tocAlwaysPinned: true });
+    expect(getSettings().tocAlwaysPinned).toBe(true);
+
+    updateSettings({ locale: 'en-US' });
+    expect(getSettings().tocAlwaysPinned).toBe(true);
+
+    localStorage.setItem('folia-settings', JSON.stringify({ tocAlwaysPinned: 'yes' }));
+    expect(getSettings().tocAlwaysPinned).toBe(false);
   });
 
   it('migrates legacy export settings without recursive reads', () => {

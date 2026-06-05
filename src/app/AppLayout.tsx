@@ -8,6 +8,7 @@ import {
   resolvePreviewFontFamily,
   resolvePreviewHeadingFontFamily,
   setLastOpenedPath,
+  updateSettings,
 } from '../services/settingsService';
 import { firstOpenableDocumentPath, isOpenableDocumentPath } from '../services/fileDrop';
 import { prefersStableHtmlPreview } from '../services/documentViewMode';
@@ -25,6 +26,7 @@ import { findHtmlTableBlocks } from '../services/htmlTableBlockService';
 import { Toolbar, type EditorMode } from '../components/Toolbar';
 import { StatusBar } from '../components/StatusBar';
 import { FloatingToc } from '../components/FloatingToc';
+import type { SourceHeadingScrollRequest } from '../components/EditorPane';
 
 const EditorPane = lazy(() =>
   import('../components/EditorPane').then((module) => ({ default: module.EditorPane })),
@@ -77,6 +79,7 @@ const HtmlTableEditor = lazy(() =>
 
 type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>;
 type RightPanelMode = 'none' | 'word' | 'wechat';
+type HtmlReadingPreference = 'auto' | 'markdown';
 type UpdateInstallState =
   | { phase: 'idle' }
   | { phase: 'downloading'; source: UpdateSource; update: AvailableUpdate }
@@ -137,10 +140,12 @@ export function AppLayout() {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<OpenedFile>(createEmptyFile());
   const [toc, setToc] = useState<TocItem[]>([]);
-  const [tocPinned, setTocPinned] = useState(false);
+  const [tocSessionPinned, setTocSessionPinned] = useState(false);
   const [activeTocIndex, setActiveTocIndex] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>('wysiwyg');
+  const [sourceHeadingScrollRequest, setSourceHeadingScrollRequest] = useState<SourceHeadingScrollRequest>();
+  const [htmlReadingPreference, setHtmlReadingPreference] = useState<HtmlReadingPreference>('auto');
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('none');
   const [rightPanelWidth, setRightPanelWidth] = useState(460);
   const [resizing, setResizing] = useState(false);
@@ -169,6 +174,7 @@ export function AppLayout() {
       setToc(extractToc(opened.content));
       if (opened.path) setLastOpenedPath(opened.path);
       setHtmlPresentationVisible(false);
+      setHtmlReadingPreference('auto');
       if (opened.fileType === 'docx') {
         setRightPanelMode('none');
       } else {
@@ -184,6 +190,7 @@ export function AppLayout() {
     setToc(opened.fileType === 'docx' ? [] : extractToc(opened.content));
     setLastOpenedPath(path);
     setHtmlPresentationVisible(false);
+    setHtmlReadingPreference('auto');
     if (opened.fileType === 'docx') {
       setRightPanelMode('none');
     } else {
@@ -279,6 +286,18 @@ export function AppLayout() {
     setRightPanelMode('none');
     setHtmlPresentationVisible(true);
   }, [file.fileType]);
+
+  const handleExitHtmlReadingPreview = useCallback(() => {
+    setHtmlPresentationVisible(false);
+    setHtmlReadingPreference('markdown');
+    setEditorMode('wysiwyg');
+  }, []);
+
+  const handleOpenHtmlReadingPreview = useCallback(() => {
+    setHtmlPresentationVisible(false);
+    setHtmlReadingPreference('auto');
+    setEditorMode('wysiwyg');
+  }, []);
 
   const startBackgroundUpdateDownload = useCallback((source: UpdateSource, update: AvailableUpdate) => {
     if (updateDownloadVersionRef.current === update.version) return;
@@ -487,8 +506,12 @@ export function AppLayout() {
   const updateToolbarStatus = updateState.phase === 'ready' || updateState.phase === 'installing'
     ? { phase: updateState.phase, version: updateState.update.version }
     : undefined;
-  const shouldUseStableHtmlPreview = prefersStableHtmlPreview(file.content, file.fileType);
+  const stableHtmlPreviewPreferred = prefersStableHtmlPreview(file.content, file.fileType);
+  const canToggleHtmlReadingPreview = stableHtmlPreviewPreferred && file.fileType !== 'html' && !isDocx;
+  const shouldUseStableHtmlPreview = stableHtmlPreviewPreferred
+    && (!canToggleHtmlReadingPreview || htmlReadingPreference !== 'markdown');
   const shouldShowHtmlPresentation = htmlPresentationVisible && file.fileType === 'html' && !isDocx;
+  const tocPinned = tocSessionPinned || settings.tocAlwaysPinned;
   const htmlTableBlocks = useMemo(
     () => shouldUseStableHtmlPreview && !isDocx ? findHtmlTableBlocks(file.content) : [],
     [file.content, isDocx, shouldUseStableHtmlPreview],
@@ -518,10 +541,33 @@ export function AppLayout() {
   }, []);
 
   const handleTocNavigate = useCallback((item: TocItem, index: number) => {
+    if (editorMode === 'source') {
+      setSourceHeadingScrollRequest((current) => ({
+        index,
+        requestId: (current?.requestId ?? 0) + 1,
+      }));
+      setActiveTocIndex(index);
+      return;
+    }
+
     const target = resolveTocHeading(item, index);
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setActiveTocIndex(index);
-  }, [resolveTocHeading]);
+  }, [editorMode, resolveTocHeading]);
+
+  const handleTocPinnedChange = useCallback((nextPinned: boolean) => {
+    setTocSessionPinned(nextPinned);
+    if (!nextPinned && settings.tocAlwaysPinned) {
+      updateSettings({ tocAlwaysPinned: false });
+    }
+  }, [settings.tocAlwaysPinned]);
+
+  const handleTocAlwaysPinnedChange = useCallback((nextAlwaysPinned: boolean) => {
+    if (!nextAlwaysPinned) {
+      setTocSessionPinned(true);
+    }
+    updateSettings({ tocAlwaysPinned: nextAlwaysPinned });
+  }, []);
 
   const handleHtmlTableEditorSave = useCallback((nextSource: string) => {
     handleContentChange(nextSource);
@@ -531,6 +577,7 @@ export function AppLayout() {
 
   useEffect(() => {
     if (toc.length === 0) return;
+    if (editorMode === 'source') return;
 
     const updateActiveHeading = () => {
       const rootRect = mainContentRef.current?.getBoundingClientRect();
@@ -580,7 +627,11 @@ export function AppLayout() {
     </div>
   ) : editorMode === 'source' ? (
     <Suspense fallback={<div className="editor-pane lazy-pane"><span>源码编辑器加载中</span></div>}>
-      <EditorPane source={file.content} onChange={handleContentChange} />
+      <EditorPane
+        source={file.content}
+        onChange={handleContentChange}
+        headingScrollRequest={sourceHeadingScrollRequest}
+      />
     </Suspense>
   ) : shouldShowHtmlPresentation ? (
     <Suspense fallback={<div className="html-presentation-pane lazy-pane" aria-label={t('htmlPresentationAria')} />}>
@@ -605,6 +656,15 @@ export function AppLayout() {
               onClick={handleOpenHtmlPresentation}
             >
               {t('htmlPresentationOpenLabel')}
+            </button>
+          )}
+          {canToggleHtmlReadingPreview && (
+            <button
+              type="button"
+              className="settings-action-button html-reading-markdown-button"
+              onClick={handleExitHtmlReadingPreview}
+            >
+              {t('exitHtmlReadingPreviewLabel')}
             </button>
           )}
           <button
@@ -634,9 +694,23 @@ export function AppLayout() {
       </Suspense>
     </div>
   ) : (
-    <Suspense fallback={<div className="wysiwyg-editor-pane lazy-pane"><span>所见即所得编辑器加载中</span></div>}>
-      <WysiwygEditorPane source={file.content} onChange={handleContentChange} />
-    </Suspense>
+    <div className={`markdown-editing-pane ${canToggleHtmlReadingPreview ? 'markdown-editing-pane--with-html-toggle' : ''}`}>
+      {canToggleHtmlReadingPreview && (
+        <div className="markdown-preview-toolbar" aria-label={t('markdownPreviewToolbarLabel')}>
+          <span>{t('markdownPreviewModeLabel')}</span>
+          <button
+            type="button"
+            className="settings-action-button markdown-preview-html-button"
+            onClick={handleOpenHtmlReadingPreview}
+          >
+            {t('openHtmlReadingPreviewLabel')}
+          </button>
+        </div>
+      )}
+      <Suspense fallback={<div className="wysiwyg-editor-pane lazy-pane"><span>所见即所得编辑器加载中</span></div>}>
+        <WysiwygEditorPane source={file.content} onChange={handleContentChange} />
+      </Suspense>
+    </div>
   );
 
   const rightPanel = rightPanelMode === 'word' && !isDocx ? (
@@ -706,7 +780,9 @@ export function AppLayout() {
               items={toc}
               activeIndex={activeTocIndex}
               pinned={tocPinned}
-              onPinnedChange={setTocPinned}
+              alwaysPinned={settings.tocAlwaysPinned}
+              onPinnedChange={handleTocPinnedChange}
+              onAlwaysPinnedChange={handleTocAlwaysPinnedChange}
               onNavigate={handleTocNavigate}
             />
             {editorPane}

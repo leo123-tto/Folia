@@ -76,6 +76,7 @@ describe('AppLayout system open source editing', () => {
   let root: Root;
 
   beforeEach(() => {
+    localStorage.clear();
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
       configurable: true,
       value: {},

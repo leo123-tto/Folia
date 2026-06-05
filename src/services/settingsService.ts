@@ -195,6 +195,8 @@ export interface AppSettings {
   previewLineHeight: number;
   previewWidth: PreviewWidth;
   fontDefaultsVersion: number;
+  // 大纲
+  tocAlwaysPinned: boolean;
   // 外观
   theme: 'light' | 'dark';
   zoomLevel: number;
@@ -231,6 +233,7 @@ const defaults: AppSettings = {
   previewLineHeight: 1.7,
   previewWidth: 680,
   fontDefaultsVersion: FONT_DEFAULTS_VERSION,
+  tocAlwaysPinned: false,
   theme: 'light',
   zoomLevel: 100,
 };
@@ -683,6 +686,7 @@ export function getSettings(): AppSettings {
       previewChineseCustomFont: normalizeCustomFontName(stored.previewChineseCustomFont),
       previewLatinCustomFont: normalizeCustomFontName(stored.previewLatinCustomFont),
       previewHeadingCustomFont: normalizeCustomFontName(stored.previewHeadingCustomFont),
+      tocAlwaysPinned: stored.tocAlwaysPinned === true,
     };
   } catch {
     return { ...defaults };
@@ -742,6 +746,7 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
       disabledHtmlExportPresetIds,
     ),
     license,
+    tocAlwaysPinned: (patch.tocAlwaysPinned ?? current.tocAlwaysPinned) === true,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   emitSettingsChanged(merged);

@@ -401,6 +401,7 @@ test('raw HTML tables use the stable reading preview instead of WYSIWYG editing'
   await expect(page.locator('.html-preview-pane th[colspan="2"]')).toBeVisible();
   await expect(page.locator('.html-preview-pane th[rowspan="2"]')).toBeVisible();
   await expect(page.locator('.wysiwyg-editor-pane')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '退出 HTML 预览' })).toBeVisible();
   await expect(page.getByRole('button', { name: '编辑源码' })).toBeVisible();
 
   const tableWidth = await table.evaluate((el) => el.getBoundingClientRect().width);
@@ -421,6 +422,37 @@ test('raw HTML tables use the stable reading preview instead of WYSIWYG editing'
   await page.getByRole('button', { name: '编辑源码' }).click();
   await expect(page.locator('.cm-editor')).toBeVisible();
   await expect(page.locator('.cm-content')).toContainText('rowspan');
+});
+
+test('HTML table Markdown can leave stable preview and return to ordinary Markdown preview', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText([
+    '# 大文件',
+    '',
+    '这是一个很长的 Markdown 文件开头。',
+    '',
+    '<table>',
+    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
+    '<tr><th>名称</th><th>证明目的</th></tr>',
+    '<tr><td>1</td><td>合同</td><td>证明合同关系</td></tr>',
+    '</table>',
+    '',
+    '后续还有大量正文，需要普通 Markdown 预览继续阅读。',
+  ].join('\n'));
+
+  await page.getByRole('button', { name: '源码模式' }).click();
+  await expect(page.locator('.html-preview-pane table')).toBeVisible();
+
+  await page.getByRole('button', { name: '退出 HTML 预览' }).click();
+  await expect(page.locator('.html-preview-pane')).toHaveCount(0);
+  await expect(page.locator('.wysiwyg-editor-pane')).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane')).toContainText('大文件');
+  await expect(page.getByRole('button', { name: 'HTML 阅读预览' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'HTML 阅读预览' }).click();
+  await expect(page.locator('.html-preview-pane table')).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane')).toHaveCount(0);
 });
 
 test('HTML table editor updates one table block and keeps rowspan and colspan in stable preview', async ({ page }) => {
@@ -755,7 +787,7 @@ test('long HTML evidence tables wrap inside the preview pane', async ({ page }) 
   expect(cellWhiteSpace).toBe('normal');
 });
 
-test('floating toc is available by default and can be pinned', async ({ page }) => {
+test('floating toc rail opens the outline while panel buttons pin and close it', async ({ page }) => {
   await page.goto('/');
   await openEditor(page);
   await page.keyboard.insertText('# 证据目录\n\n## 第一组 权利基础\n\n### 登记证书');
@@ -765,7 +797,7 @@ test('floating toc is available by default and can be pinned', async ({ page }) 
   const toc = page.locator('.floating-toc');
   await expect(toc).toBeVisible();
   await expect(page.locator('.floating-toc-rail')).toBeVisible();
-  await expect(page.getByRole('button', { name: '点击固定大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '查看大纲' })).toBeVisible();
   await expect(page.locator('.floating-toc-pin')).toHaveCount(0);
 
   const collapsedState = await toc.evaluate((el) => ({
@@ -779,8 +811,16 @@ test('floating toc is available by default and can be pinned', async ({ page }) 
   expect(collapsedState.hitWidth).toBeLessThanOrEqual(24);
   expect(collapsedState.left).toBeLessThanOrEqual(24);
 
-  await page.getByRole('button', { name: '点击固定大纲' }).focus();
+  await page.getByRole('button', { name: '查看大纲' }).click();
   await expect(page.locator('.floating-toc-panel')).toBeVisible();
+  await expect(toc).not.toHaveClass(/pinned/);
+  await expect(page.getByRole('button', { name: '固定大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '关闭大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '关闭大纲' }).click();
+  await expect(page.locator('.floating-toc-panel')).toBeHidden();
+  await expect(toc).not.toHaveClass(/pinned/);
 
   await page.locator('.floating-toc-rail').hover();
   await expect(page.locator('.floating-toc-panel')).toBeVisible();
@@ -819,15 +859,30 @@ test('floating toc is available by default and can be pinned', async ({ page }) 
     return {
       width: rect.width,
       height: rect.height,
+      active: tick.classList.contains('active'),
+      level: Number(Array.from(tick.classList)
+        .find((className) => className.startsWith('level-'))
+        ?.replace('level-', '') ?? 0),
     };
   }));
-  expect(tickMetrics[0].width).toBeGreaterThan(tickMetrics[1].width);
-  expect(tickMetrics[1].width).toBeGreaterThan(tickMetrics[2].width);
-  expect(tickMetrics[0].height).toBeGreaterThan(tickMetrics[2].height);
+  const level1Tick = tickMetrics.find((tick) => tick.level === 1);
+  const level2Tick = tickMetrics.find((tick) => tick.level === 2);
+  const level3Tick = tickMetrics.find((tick) => tick.level === 3);
+  const activeTick = tickMetrics.find((tick) => tick.active);
 
-  await page.getByRole('button', { name: '点击固定大纲' }).click();
+  expect(level1Tick).toBeDefined();
+  expect(level2Tick).toBeDefined();
+  expect(level3Tick).toBeDefined();
+  expect(activeTick).toBeDefined();
+  expect(level1Tick!.width).toBeGreaterThan(level3Tick!.width);
+  expect(level2Tick!.width).toBeGreaterThan(level3Tick!.width);
+  expect(level1Tick!.height).toBeGreaterThan(level3Tick!.height);
+
+  await page.getByRole('button', { name: '固定大纲' }).click();
   await expect(toc).toHaveClass(/pinned/);
-  await expect(page.getByRole('button', { name: '再次点击取消固定大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '取消固定大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '关闭大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveAttribute('aria-pressed', 'false');
   await page.mouse.move(20, 20);
   await expect(page.locator('.floating-toc-panel')).toBeVisible();
 
@@ -840,8 +895,54 @@ test('floating toc is available by default and can be pinned', async ({ page }) 
   expect(editorAfterPin!.x).toBeGreaterThan(editorBeforePin!.x + 180);
   expect(editorAfterPin!.width).toBeLessThan(editorBeforePin!.width - 180);
 
-  await page.getByRole('button', { name: '再次点击取消固定大纲' }).click();
+  await page.getByRole('button', { name: '取消固定大纲' }).click();
   await expect(toc).not.toHaveClass(/pinned/);
+  await expect(page.locator('.floating-toc-panel')).toBeVisible();
+
+  await page.getByRole('button', { name: '固定大纲' }).click();
+  await expect(toc).toHaveClass(/pinned/);
+  await page.getByRole('button', { name: '关闭大纲' }).click();
+  await expect(toc).not.toHaveClass(/pinned/);
+  await expect(page.locator('.floating-toc-panel')).toBeHidden();
+  await expect(page.getByRole('button', { name: '查看大纲' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveCount(0);
+});
+
+test('floating toc can persist an always-pinned outline preference from the pinned panel', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText('# 证据目录\n\n## 第一组 权利基础\n\n### 登记证书');
+  const toc = page.locator('.floating-toc');
+
+  await expect(toc).toBeVisible();
+  await expect(toc).not.toHaveClass(/pinned/);
+  await page.locator('.floating-toc-rail').hover();
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '固定大纲' }).click();
+  const alwaysPinned = page.getByRole('button', { name: '总是固定大纲' });
+  await expect(toc).toHaveClass(/pinned/);
+  await expect(alwaysPinned).toBeVisible();
+  await expect(alwaysPinned).toHaveAttribute('aria-pressed', 'false');
+
+  await alwaysPinned.click();
+  await expect(alwaysPinned).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('folia-settings') || '{}').tocAlwaysPinned
+  ))).toBe(true);
+
+  await page.reload();
+  await openEditor(page);
+  await page.keyboard.insertText('# 新文档\n\n## 默认固定');
+  await expect(toc).toHaveClass(/pinned/);
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: '取消固定大纲' }).click();
+  await expect(toc).not.toHaveClass(/pinned/);
+  await expect(page.getByRole('button', { name: '总是固定大纲' })).toHaveCount(0);
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('folia-settings') || '{}').tocAlwaysPinned
+  ))).toBe(false);
 });
 
 test('floating toc tracks WYSIWYG scroll after the editor mounts', async ({ page }) => {
@@ -856,13 +957,36 @@ test('floating toc tracks WYSIWYG scroll after the editor mounts', async ({ page
   await expect(liveEditor(page)).toBeVisible();
 
   await page.locator('.floating-toc-rail').hover();
-  await page.getByRole('button', { name: '点击固定大纲' }).click();
+  await page.getByRole('button', { name: '固定大纲' }).click();
   await liveEditorContent(page).evaluate((el) => {
     el.scrollTop = el.scrollHeight;
     el.dispatchEvent(new Event('scroll'));
   });
 
   await expect(page.locator('.floating-toc-item.active')).toContainText('第 10 节');
+});
+
+test('floating toc jumps to headings in source mode', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText(
+    Array.from({ length: 24 }, (_, index) => (
+      `## 第 ${index + 1} 节\n\n${Array.from({ length: 8 }, (_unused, lineIndex) => `第 ${index + 1} 节正文 ${lineIndex + 1}`).join('\n')}`
+    )).join('\n\n'),
+  );
+  await expect(page.locator('.cm-editor')).toBeVisible();
+
+  const scroller = page.locator('.cm-scroller');
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+
+  await page.locator('.floating-toc-rail').hover();
+  await page.getByRole('button', { name: '固定大纲' }).click();
+  await page.getByRole('button', { name: '第 18 节' }).click();
+
+  await expect.poll(async () => scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(800);
+  await expect(page.locator('.floating-toc-item.active')).toContainText('第 18 节');
 });
 
 test('floating toc stays bounded with many headings', async ({ page }) => {

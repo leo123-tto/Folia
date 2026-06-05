@@ -275,7 +275,8 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
 }
 
 .writing-layout .editor-pane,
-.writing-layout .wysiwyg-editor-pane {
+.writing-layout .wysiwyg-editor-pane,
+.writing-layout .markdown-editing-pane {
   flex: 1;
   display: flex;
   overflow: hidden;
@@ -487,8 +488,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   pointer-events: none;
 }
 
-.floating-toc:hover .floating-toc-panel,
-.floating-toc:focus-within .floating-toc-panel {
+.floating-toc.expanded .floating-toc-panel {
   opacity: 1;
   visibility: visible;
   transform: translateX(0);
@@ -511,14 +511,12 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   pointer-events: auto;
 }
 
-.floating-toc:hover .floating-toc-tick,
-.floating-toc:focus-within .floating-toc-tick,
+.floating-toc.expanded .floating-toc-tick,
 .floating-toc.pinned .floating-toc-tick {
   background: color-mix(in oklch, var(--muted) 66%, transparent);
 }
 
-.floating-toc:hover .floating-toc-tick.active,
-.floating-toc:focus-within .floating-toc-tick.active,
+.floating-toc.expanded .floating-toc-tick.active,
 .floating-toc.pinned .floating-toc-tick.active {
   background: var(--accent);
 }
@@ -536,25 +534,36 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   font-size: 10.5px;
 }
 
-.floating-toc-unpin {
-  display: none;
+.floating-toc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.floating-toc-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
   border-radius: 3px;
-  line-height: 1;
+  padding: 0;
+  transition: background 0.1s, color 0.1s;
 }
 
-.floating-toc-unpin:hover {
+.floating-toc-action:hover,
+.floating-toc-action:focus-visible {
   background: var(--control-hover-bg);
   color: var(--fg);
 }
 
-.floating-toc.pinned .floating-toc-unpin {
-  display: block;
+.floating-toc-pin-toggle[aria-pressed='true'] {
+  color: var(--accent);
 }
 
 .floating-toc.pinned .floating-toc-header small {
@@ -567,6 +576,78 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.floating-toc-preference {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: calc(100% - 16px);
+  min-height: 30px;
+  margin: 0 8px 4px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.floating-toc-preference span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floating-toc-preference:hover,
+.floating-toc-preference:focus-visible {
+  border-color: var(--border-soft);
+  background: var(--control-hover-bg);
+  color: var(--fg);
+}
+
+.floating-toc-preference[aria-pressed='true'] {
+  color: var(--fg);
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
+}
+
+.floating-toc-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 24px;
+  height: 14px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--muted) 28%, transparent);
+  transition: background 0.12s;
+}
+
+.floating-toc-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px oklch(0% 0 0 / 0.18);
+  transition: transform 0.12s, background 0.12s;
+}
+
+.floating-toc-preference[aria-pressed='true'] .floating-toc-switch {
+  background: var(--accent);
+}
+
+.floating-toc-preference[aria-pressed='true'] .floating-toc-switch::after {
+  transform: translateX(10px);
+  background: var(--bg);
 }
 
 .floating-toc-list {
@@ -679,6 +760,37 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   color: var(--border);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+/* ===== Markdown Preview Mode ===== */
+
+.markdown-editing-pane {
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.markdown-preview-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 6px 24px 4px 44px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.markdown-preview-toolbar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-preview-html-button,
+.html-reading-markdown-button {
+  flex: 0 0 auto;
 }
 
 /* ===== WYSIWYG Editor Pane ===== */
