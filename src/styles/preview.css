@@ -56,7 +56,10 @@
 .preview-content > footer,
 .preview-content > main,
 .preview-content > nav {
-  font-family: var(--preview-latin-font-family, var(--preview-font-family, var(--font-body))) !important;
+  font-family:
+    var(--preview-latin-font-family, -apple-system),
+    var(--preview-chinese-font-family, var(--font-reading)),
+    var(--preview-font-family, var(--font-body)) !important;
 }
 
 .preview-content li,
@@ -66,7 +69,10 @@
 .preview-content blockquote > p,
 .preview-content dd,
 .preview-content dt {
-  font-family: var(--preview-latin-font-family, var(--preview-font-family, var(--font-body))) !important;
+  font-family:
+    var(--preview-latin-font-family, -apple-system),
+    var(--preview-chinese-font-family, var(--font-reading)),
+    var(--preview-font-family, var(--font-body)) !important;
 }
 
 .preview-content h1 {

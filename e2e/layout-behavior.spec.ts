@@ -574,6 +574,38 @@ test('preview font settings split Chinese, English, and heading choices', async 
   expect(fontState.heading).toContain('Georgia');
 });
 
+test('preview body text consumes the selected Chinese font stack', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText([
+    '中文正文 English',
+    '',
+    '<table>',
+    '<tr><th>项目</th><th>内容</th></tr>',
+    '<tr><td>字体</td><td>预览</td></tr>',
+    '</table>',
+  ].join('\n'));
+
+  await page.getByRole('button', { name: '源码模式' }).click();
+  const paragraph = page.locator('.html-preview-pane .preview-content > p').first();
+  await expect(paragraph).toContainText('中文正文');
+
+  await page.getByRole('button', { name: '设置' }).click();
+  await page.getByRole('button', { name: '预览', exact: true }).click();
+  await page.getByLabel('中文字体').selectOption('Songti SC');
+  await page.getByLabel('英文字体').selectOption('Georgia');
+
+  const paragraphFontFamily = await paragraph.evaluate((el) => (
+    getComputedStyle(el).fontFamily
+  ));
+
+  expect(paragraphFontFamily).toContain('Georgia');
+  expect(paragraphFontFamily).toContain('Songti SC');
+  expect(paragraphFontFamily.indexOf('Songti SC')).toBeLessThan(
+    paragraphFontFamily.indexOf('sans-serif'),
+  );
+});
+
 test('Word export settings make the paper preview expandable', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '设置' }).click();

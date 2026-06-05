@@ -212,8 +212,10 @@ describe('settingsService', () => {
 
     expect(chinese).toContain('Songti SC');
     expect(chinese).not.toContain('Iowan Old Style');
+    expect(chinese).not.toContain('sans-serif');
     expect(latin).toContain('Iowan Old Style');
     expect(latin).not.toContain('Songti SC');
+    expect(latin).not.toContain('sans-serif');
   });
 
   it('keeps old settings compatible with the default empty WeChat custom CSS', () => {

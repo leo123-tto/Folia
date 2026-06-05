@@ -351,6 +351,24 @@ function previewChineseFontStack(settings: Pick<PreviewFontSettings, 'previewChi
   }
 }
 
+function previewLatinFontStackOrDefault(
+  settings: Pick<PreviewFontSettings, 'previewLatinFontFamily' | 'previewLatinCustomFont'>,
+): string[] {
+  const stack = previewLatinFontStack(settings);
+  return stack.length > 0
+    ? stack
+    : previewLatinFontStack({ previewLatinFontFamily: 'Default', previewLatinCustomFont: '' });
+}
+
+function previewChineseFontStackOrDefault(
+  settings: Pick<PreviewFontSettings, 'previewChineseFontFamily' | 'previewChineseCustomFont'>,
+): string[] {
+  const stack = previewChineseFontStack(settings);
+  return stack.length > 0
+    ? stack
+    : previewChineseFontStack({ previewChineseFontFamily: 'Default', previewChineseCustomFont: '' });
+}
+
 function previewBaseFontStack(fontFamily: PreviewFontFamily): string[] {
   switch (fontFamily) {
     case 'System Sans':
@@ -388,17 +406,11 @@ export function resolvePreviewFontFamily(settings: PreviewFontSettings): string 
 }
 
 export function resolvePreviewChineseFontFamily(settings: PreviewFontSettings): string {
-  return joinFontStack([
-    ...previewChineseFontStack(settings),
-    'sans-serif',
-  ]);
+  return joinFontStack(previewChineseFontStackOrDefault(settings));
 }
 
 export function resolvePreviewLatinFontFamily(settings: PreviewFontSettings): string {
-  return joinFontStack([
-    ...previewLatinFontStack(settings),
-    'sans-serif',
-  ]);
+  return joinFontStack(previewLatinFontStackOrDefault(settings));
 }
 
 export function resolvePreviewHeadingFontFamily(settings: PreviewFontSettings): string {

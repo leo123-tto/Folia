@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.20]
+
 ### Removed
 
 - 删 `website/` Astro 子目录、官网构建转发脚本 `scripts/run-website.mjs` 和 GitHub Pages 部署 workflow `deploy-website.yml`，官网已迁到独立仓 `cat-xierluo/personal-site` 统一管理。
@@ -18,6 +20,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - 修复在设置页切换中文字体、英文字体或标题字体后，主阅读预览面板不实时更新的问题：以前 CSS 变量变化被 Vditor 自带 `font-family` 覆盖，需要切换文件或重新触发渲染才会生效；现在 CSS 变量直接控制正文 / 列表 / 表格 / 引用等 Vditor 元素的字体并以 `!important` 优先于其默认样式。
+- 修复阅读预览正文只消费英文字体变量的问题：正文、列表、表格和引用现在按英文字体栈 → 中文字体栈 → 总体阅读字体回退组合，避免 `sans-serif` 提前截断用户选择的中文字体。
 
 ## [0.3.19]
 
