@@ -2,7 +2,7 @@
 
 ## 第一部分：决策记录
 
-### [DEC-072] - 2026-06-05 - 修复桌面生产包空白页并准备发布 v0.3.19
+### [DEC-072] - 2026-06-05 - 修复桌面生产包空白页并发布 v0.3.19
 
 **背景**
 用户反馈最新版本通过正常打开、双击打开和右键打开后，主页面都是空白。复查 `v0.3.18` 生产构建发现两个发布级风险：Tauri 桌面包内嵌页面使用 Vite 默认的绝对 `/assets/...` 路径，WebView 从本地文件加载时可能找不到前端 JS/CSS；源码模式相关 CodeMirror 依赖被 `editor-vendor` 的 `maxSize` 任意切分，生产环境可能出现 `Class extends value undefined is not a constructor or null`，导致页面白屏。
@@ -26,6 +26,11 @@
 - `npm run tauri:build:local`
 - `git diff --check`
 - 本地 `Folia.app` 已确认 `CFBundleShortVersionString` 和 `CFBundleVersion` 均为 `0.3.19`。
+- 已推送发布提交 `7dd54e8` 与 annotated tag `v0.3.19`。
+- Release workflow run `26965943851` 已成功完成，macOS Apple Silicon、macOS Intel、Windows 和 publish job 均为 success。
+- GitHub Release 已公开发布并包含 `latest.json`、macOS `.dmg` / `.app.tar.gz`、Windows `.exe` / `.msi` 及签名文件：https://github.com/cat-xierluo/Folia/releases/tag/v0.3.19
+- `v0.3.19` Release Notes 已按固定结构补齐，正文未重复一级版本标题。
+- Gitee 同步步骤成功完成；GitHub Release 仍是发布与自动更新主路径。
 
 **影响**
 - 桌面包启动时不再依赖绝对根路径加载前端资源，降低正常打开、双击打开、右键打开后主窗口空白的风险。
