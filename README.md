@@ -115,6 +115,10 @@ npm run tauri:build:local
 
 构建产物通常位于 `src-tauri/target/release/bundle/`。
 
+## 贡献
+
+欢迎通过 Issue / Pull Request 参与 Folia。贡献流程与规范见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
 ## 许可
 
 Apache License 2.0
