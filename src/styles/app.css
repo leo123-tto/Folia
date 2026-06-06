@@ -1937,11 +1937,26 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   flex-shrink: 0;
   gap: 12px;
   letter-spacing: 0;
+  min-width: 0;
+}
+
+.status-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
 }
 
 .status-dirty {
+  flex-shrink: 0;
   color: var(--accent);
   font-weight: 500;
+}
+
+.status-copy-feedback {
+  flex-shrink: 0;
 }
 
 /* ===== Settings Overlay & Modal ===== */

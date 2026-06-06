@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { writeText } from '../services/clipboardService';
+import { resolveStatusBarPath } from '../services/settingsService';
+import { useSettings } from '../hooks/useSettings';
+import { translate } from '../services/i18n';
 
 type StatusBarProps = {
   filePath: string;
@@ -12,7 +15,12 @@ type CopyMarker = { path: string; outcome: CopyOutcome } | null;
 const COPY_FEEDBACK_RESET_MS = 1200;
 
 export function StatusBar({ filePath, dirty }: StatusBarProps) {
+  const settings = useSettings();
   const hasPath = filePath.length > 0;
+  const t = (key: Parameters<typeof translate>[1]) => translate(settings.locale, key);
+  const displayedPath = hasPath
+    ? resolveStatusBarPath(filePath, settings.statusBarPathStyle)
+    : t('statusBarNoFileLabel');
   const [copyMarker, setCopyMarker] = useState<CopyMarker>(null);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -55,17 +63,17 @@ export function StatusBar({ filePath, dirty }: StatusBarProps) {
       : 'idle';
 
   return (
-    <div className="status-bar">
+    <div className="status-bar" data-status-bar-path-style={settings.statusBarPathStyle}>
       <span
         className="status-path"
         data-copy-state={copyState}
         onDoubleClick={hasPath ? handleDoubleClick : undefined}
-        title={hasPath ? '双击复制完整路径' : undefined}
+        title={hasPath ? t('statusBarPathCopyTitle') : undefined}
         style={
           hasPath ? { cursor: 'text', userSelect: 'text' } : undefined
         }
       >
-        {hasPath ? filePath : '未打开文件'}
+        {displayedPath}
       </span>
       {copyState !== 'idle' && (
         <span
@@ -76,10 +84,10 @@ export function StatusBar({ filePath, dirty }: StatusBarProps) {
             fontWeight: 500,
           }}
         >
-          {copyState === 'copied' ? '已复制' : '复制失败'}
+          {copyState === 'copied' ? t('statusBarCopySuccess') : t('statusBarCopyFailed')}
         </span>
       )}
-      {dirty && <span className="status-dirty">未保存</span>}
+      {dirty && <span className="status-dirty">{t('statusBarDirty')}</span>}
     </div>
   );
 }

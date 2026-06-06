@@ -64,6 +64,9 @@ export class CustomHtmlExportPresetLimitError extends Error {
 }
 
 export type EditorFontFamily = 'IBM Plex Mono' | 'JetBrains Mono' | 'SF Mono' | 'System Default';
+export type StatusBarPathStyle = 'full' | 'basename' | 'middle';
+export const STATUS_BAR_PATH_STYLES: readonly StatusBarPathStyle[] = ['full', 'basename', 'middle'] as const;
+export const DEFAULT_STATUS_BAR_PATH_STYLE: StatusBarPathStyle = 'middle';
 export type PreviewFontFamily =
   | 'Default'
   | 'System Sans'
@@ -200,6 +203,7 @@ export interface AppSettings {
   // 外观
   theme: 'light' | 'dark';
   zoomLevel: number;
+  statusBarPathStyle: StatusBarPathStyle;
 }
 
 const defaults: AppSettings = {
@@ -236,6 +240,7 @@ const defaults: AppSettings = {
   tocAlwaysPinned: false,
   theme: 'light',
   zoomLevel: 100,
+  statusBarPathStyle: DEFAULT_STATUS_BAR_PATH_STYLE,
 };
 
 function readStoredSettings(): Partial<AppSettings> {
@@ -294,6 +299,13 @@ function normalizeCustomFontName(value: unknown): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 80);
+}
+
+function normalizeStatusBarPathStyle(value: unknown): StatusBarPathStyle {
+  if (typeof value !== 'string') return DEFAULT_STATUS_BAR_PATH_STYLE;
+  return (STATUS_BAR_PATH_STYLES as readonly string[]).includes(value)
+    ? (value as StatusBarPathStyle)
+    : DEFAULT_STATUS_BAR_PATH_STYLE;
 }
 
 function quoteFontName(name: string): string {
@@ -398,6 +410,36 @@ function joinFontStack(parts: string[]): string {
     return true;
   });
   return stack.join(', ');
+}
+
+function splitPathSegments(path: string): string[] {
+  return path.split(/[\\/]+/).filter(Boolean);
+}
+
+function resolvePathBasename(path: string): string {
+  const segments = splitPathSegments(path);
+  return segments[segments.length - 1] ?? path;
+}
+
+export function resolveStatusBarPath(
+  filePath: string,
+  style: StatusBarPathStyle,
+  maxLength: number = 60,
+): string {
+  if (!filePath) return filePath;
+  if (style === 'full') return filePath;
+
+  if (style === 'basename') {
+    return resolvePathBasename(filePath);
+  }
+
+  if (filePath.length <= maxLength) return filePath;
+
+  const basename = resolvePathBasename(filePath);
+  const ellipsis = '…';
+  const headBudget = Math.max(8, maxLength - basename.length - ellipsis.length - 1);
+  const head = filePath.slice(0, headBudget);
+  return `${head}${ellipsis}${basename}`;
 }
 
 export function resolvePreviewFontFamily(settings: PreviewFontSettings): string {
@@ -687,6 +729,7 @@ export function getSettings(): AppSettings {
       previewLatinCustomFont: normalizeCustomFontName(stored.previewLatinCustomFont),
       previewHeadingCustomFont: normalizeCustomFontName(stored.previewHeadingCustomFont),
       tocAlwaysPinned: stored.tocAlwaysPinned === true,
+      statusBarPathStyle: normalizeStatusBarPathStyle(stored.statusBarPathStyle),
     };
   } catch {
     return { ...defaults };
@@ -747,6 +790,7 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
     ),
     license,
     tocAlwaysPinned: (patch.tocAlwaysPinned ?? current.tocAlwaysPinned) === true,
+    statusBarPathStyle: normalizeStatusBarPathStyle(patch.statusBarPathStyle ?? current.statusBarPathStyle),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   emitSettingsChanged(merged);

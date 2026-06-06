@@ -145,6 +145,16 @@ const zhCN = {
   exportWordLabel: '导出 Word',
   closePreviewTitle: '关闭',
   closePreviewLabel: '关闭预览',
+  statusBarNoFileLabel: '未打开文件',
+  statusBarDirty: '未保存',
+  statusBarPathCopyTitle: '双击复制完整路径',
+  statusBarCopySuccess: '已复制',
+  statusBarCopyFailed: '复制失败',
+  statusBarPathLabel: '状态栏路径',
+  statusBarPathDesc: '控制底部状态栏显示的路径长度，长路径自动 ellipsis 不会撑开。',
+  statusBarPathStyleFull: '完整路径',
+  statusBarPathStyleBasename: '仅文件名',
+  statusBarPathStyleMiddle: '首尾保留（推荐）',
 };
 
 type I18nKey = keyof typeof zhCN;
@@ -288,6 +298,16 @@ const enUS: Record<I18nKey, string> = {
   exportWordLabel: 'Export Word',
   closePreviewTitle: 'Close',
   closePreviewLabel: 'Close preview',
+  statusBarNoFileLabel: 'No file open',
+  statusBarDirty: 'Unsaved',
+  statusBarPathCopyTitle: 'Double-click to copy the full path',
+  statusBarCopySuccess: 'Copied',
+  statusBarCopyFailed: 'Copy failed',
+  statusBarPathLabel: 'Status bar path',
+  statusBarPathDesc: 'Choose how the bottom status bar shows long paths. Overflow ellipsis keeps the bar at a fixed height.',
+  statusBarPathStyleFull: 'Full path',
+  statusBarPathStyleBasename: 'File name only',
+  statusBarPathStyleMiddle: 'Start and end (recommended)',
 };
 
 const jaJP: Record<I18nKey, string> = {
@@ -429,6 +449,16 @@ const jaJP: Record<I18nKey, string> = {
   exportWordLabel: 'Word に書き出し',
   closePreviewTitle: '閉じる',
   closePreviewLabel: 'プレビューを閉じる',
+  statusBarNoFileLabel: 'ファイルが開かれていません',
+  statusBarDirty: '未保存',
+  statusBarPathCopyTitle: 'ダブルクリックで完全なパスをコピー',
+  statusBarCopySuccess: 'コピーしました',
+  statusBarCopyFailed: 'コピー失敗',
+  statusBarPathLabel: 'ステータスバーのパス',
+  statusBarPathDesc: 'ステータスバーに表示するパスの長さを選択。長いパスは省略表示でバーが伸びません。',
+  statusBarPathStyleFull: '完全なパス',
+  statusBarPathStyleBasename: 'ファイル名のみ',
+  statusBarPathStyleMiddle: '先頭と末尾（推奨）',
 };
 
 const dictionaries: Record<AppLocale, Record<I18nKey, string>> = {

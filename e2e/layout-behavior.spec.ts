@@ -1132,3 +1132,53 @@ test('settings modal first frame is non-blank after cache is cleared', async ({ 
   await waitForElementAnimations(page, '.settings-modal');
   await expect(page.locator('.settings-modal-content')).toBeVisible();
 });
+
+test('status bar shows the no-file placeholder and keeps a fixed height when no document is open', async ({ page }) => {
+  await page.goto('/');
+
+  const statusBar = page.locator('.status-bar');
+  await expect(statusBar).toBeVisible();
+
+  const path = page.locator('.status-path');
+  await expect(path).toHaveText('未打开文件');
+
+  const box = await statusBar.boundingBox();
+  expect(box?.height ?? 0).toBeLessThanOrEqual(22);
+});
+
+test('status bar path style setting is wired in the appearance section and persists changes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+
+  const select = page.getByLabel('状态栏路径');
+  await expect(select).toBeVisible();
+  await expect(select).toHaveValue('middle');
+
+  await select.selectOption('basename');
+  let persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('basename');
+
+  await select.selectOption('full');
+  persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('full');
+
+  await select.selectOption('middle');
+  persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('middle');
+});
+
+test('status bar path style setting falls back to middle when the stored value is invalid', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('folia-settings', JSON.stringify({ statusBarPathStyle: 'garbage' }));
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+
+  const select = page.getByLabel('状态栏路径');
+  await expect(select).toHaveValue('middle');
+});

@@ -25,6 +25,7 @@ import {
   resolvePreviewHeadingFontFamily,
   resolvePreviewChineseFontFamily,
   resolvePreviewLatinFontFamily,
+  resolveStatusBarPath,
   setExportPreset,
   setExportPresetEnabled,
   setHtmlExportPreset,
@@ -76,6 +77,7 @@ describe('settingsService', () => {
       previewLatinFontFamily: 'Default',
       previewHeadingFontFamily: 'Body',
       tocAlwaysPinned: false,
+      statusBarPathStyle: 'middle',
     });
 
     localStorage.setItem('folia-settings', '{invalid json');
@@ -231,6 +233,45 @@ describe('settingsService', () => {
     expect(latin).toContain('Iowan Old Style');
     expect(latin).not.toContain('Songti SC');
     expect(latin).not.toContain('sans-serif');
+  });
+
+  it('resolves the status bar path for full, basename, and middle styles', () => {
+    const longPath = '/Users/foo/Documents/projects/legal/court-brief-2026-06-06-final.md';
+    const basename = 'court-brief-2026-06-06-final.md';
+    const shortPath = '/tmp/readme.md';
+
+    expect(resolveStatusBarPath(longPath, 'full')).toBe(longPath);
+    expect(resolveStatusBarPath(longPath, 'basename')).toBe(basename);
+    expect(resolveStatusBarPath(shortPath, 'full')).toBe(shortPath);
+    expect(resolveStatusBarPath(shortPath, 'basename')).toBe('readme.md');
+    expect(resolveStatusBarPath(shortPath, 'middle')).toBe(shortPath);
+
+    const middle = resolveStatusBarPath(longPath, 'middle');
+    expect(middle).toContain('…');
+    expect(middle.endsWith(basename)).toBe(true);
+    expect(middle.length).toBeLessThanOrEqual(60);
+    expect(middle.length).toBeLessThan(longPath.length);
+
+    expect(resolveStatusBarPath('C:\\Users\\foo\\Documents\\contract.md', 'basename'))
+      .toBe('contract.md');
+    expect(resolveStatusBarPath('', 'full')).toBe('');
+    expect(resolveStatusBarPath('plain.md', 'basename')).toBe('plain.md');
+  });
+
+  it('persists and normalizes the status bar path style setting', () => {
+    localStorage.setItem('folia-settings', JSON.stringify({
+      statusBarPathStyle: 'basename',
+    }));
+
+    expect(getSettings().statusBarPathStyle).toBe('basename');
+
+    updateSettings({ statusBarPathStyle: 'full' });
+    expect(getSettings().statusBarPathStyle).toBe('full');
+
+    localStorage.setItem('folia-settings', JSON.stringify({
+      statusBarPathStyle: 'unsupported',
+    }));
+    expect(getSettings().statusBarPathStyle).toBe('middle');
   });
 
   it('keeps old settings compatible with the default empty WeChat custom CSS', () => {
