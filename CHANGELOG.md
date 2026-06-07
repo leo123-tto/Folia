@@ -10,16 +10,27 @@ All notable changes to this project will be documented in this file.
 - 状态栏高度固定为 22px；状态栏文案、复制反馈与"未保存"标记同步加 `flex-shrink: 0` 避免被长路径挤压。
 - 设置页移除独立的"快捷键"Tab；快捷键信息直接合并到 Toolbar 等可交互元素的 `title` 中，覆盖打开 / 保存 / 另存为 / 源码 / Word 预览 / HTML 预览 / 设置 7 个核心按钮（`Cmd+O` / `Cmd+S` / `Cmd+Shift+S` / `Cmd+Alt+S` / `Cmd+Alt+P` / `Cmd+Alt+M` / `Cmd+,`），中 / 英 / 日三语同步。设置页导航现为通用 / 编辑器 / 预览 / 外观 / Word 导出 / HTML 导出 / 授权 / 关于 共 8 个 Tab。
 - 新增快捷键：`Cmd+Alt+S` 切换源码模式、`Cmd+Alt+P` 切换 Word 纸张预览、`Cmd+Alt+M` 切换 HTML 预览、`Cmd+,` 打开设置；与既有 `Cmd+O` / `Cmd+S` / `Cmd+Shift+S` / `Cmd+Shift+E` 合并为一致的快捷键面板。
+- 重构 HTML 阅读预览 / Markdown 预览切换为 Vditor WYSIWYG 一体化（ISS-155 / DEC-085）：所有 Markdown 与 HTML 文档默认直接进入 Vditor WYSIWYG（`mode: 'ir'`），普通段落与不含 `rowspan` / `colspan` 的简单表格内文字可直接编辑；含 `rowspan` / `colspan` 的复杂表格区域在 Vditor 中标记为 `contenteditable="false"` + `data-folia-locked="table"`，结构与文字均不可改，输入回调对比原 `findHtmlTableBlocks` 自动恢复被改动的复杂表格源码。
 
 ### Performance
 
 - 设置页拆分为按 Tab 懒加载：`SettingsPage` 模块不再一次性 import 所有子 section；切换 Tab 时只下载对应 section chunk，GeneralSection 与 SettingsPage 在 `preloadSettingsPage` 中并行预热。`ExportSection` / `WechatSection` 等较重的子组件不再拖累首次打开设置页的耗时。骨架屏行数同步从 9 减为 8 以匹配新的导航数。
+
+### Removed
+
+- 删除 `htmlReadingPreference` 状态机、`canToggleHtmlReadingPreview` 派生、`handleExitHtmlReadingPreview` / `handleOpenHtmlReadingPreview`，以及顶部"普通 Markdown 预览 ↔ HTML 阅读预览"toolbar 切换按钮；删除 `html-reading-toolbar` 中"退出 HTML 预览 / 编辑表格"两个按钮和 `markdown-preview-toolbar` 整栏。
+- 删除结构化表格编辑入口 `htmlTableEditorVisible` 与 `HtmlTableEditor` 组件（用户确认不使用结构化编辑），Toolbar 源码按钮作为兜底编辑入口；`HtmlPresentationPane` 对 `.md` 文档的入口同步收紧为只对 `.html` / `.htm` 文件生效。
 
 ### Fixed
 
 - 修复 Vditor WYSIWYG（即时渲染）模式中输入 `**foo**` 后 `**` 字符仍以蓝色 marker 持续可见、加粗看上去未生效的问题：`WysiwygEditorPane` 监听 `keydown` 钩子并在停顿 220ms 后强制清除 IR 节点的 `vditor-ir__node--expand` class，与 Vditor 自身 `blurEvent` 行为对齐；编辑过程中不打断用户，持续键入时 marker 仍可见，停顿后自动折叠。
 
 - 修复打开右侧 Word / HTML 预览面板时主 Markdown 区域被反向压扁、行宽急剧收窄的问题：`.main-content` 引入 `--main-min-width: 480px` 阈值，主编辑 / 预览 / HTML 演示容器在 `.right-panel-open` 下保证 480px 最低行宽；右侧面板宽度改为 `clamp(360px, var(--right-panel-width, 460px), calc(100% - 489px))`；800×600 视口下 Word 预览自动折叠，1280×800 视口主区保持可读。新增 `.html-presentation-layout` / `.html-reading-layout` / `.word-preview-open` / `.wechat-preview-open` 显式规则，消除 dangling class。
+
+### Added
+
+- 复杂表格上方 hover 出现"查看原貌"小图标（`<button class="folia-html-table-viewer-trigger">`），点击后弹出 `<HtmlTableViewerOverlay />` 渲染 `createHtmlReadingPreviewHtml` 的忠实 HTML 版本（独立容器，不打断 Vditor 状态），支持 ESC、关闭按钮、点击遮罩三种关闭方式。
+- `htmlTableBlockService` 暴露 `classifyHtmlTableBlocks()`，返回 `{ simple, complex }` 两桶以供 Vditor 锁定与输入拦截使用；新增 5 个 `classifyHtmlTableBlocks` 单元测试。
 
 ## [0.3.21]
 

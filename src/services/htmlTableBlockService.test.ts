@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyHtmlTableBlocks,
   findHtmlTableBlocks,
   replaceHtmlTableBlock,
 } from './htmlTableBlockService';
@@ -124,5 +125,84 @@ describe('htmlTableBlockService', () => {
     const source = '<table><tr><td>A</td></tr></table>';
 
     expect(replaceHtmlTableBlock(source, 3, '<table><tr><td>B</td></tr></table>')).toBe(source);
+  });
+
+  describe('classifyHtmlTableBlocks', () => {
+    it('treats tables without rowspan/colspan as simple', () => {
+      const source = [
+        '<table><tr><th>项目</th><th>金额</th></tr><tr><td>合同</td><td>1 万</td></tr></table>',
+      ].join('\n');
+
+      const result = classifyHtmlTableBlocks(source);
+
+      expect(result.complex).toEqual([]);
+      expect(result.simple).toHaveLength(1);
+      expect(result.simple[0].index).toBe(0);
+    });
+
+    it('treats tables with rowspan as complex', () => {
+      const source = [
+        '<table>',
+        '<tr><th rowspan="2">序号</th><th>名称</th></tr>',
+        '<tr><td>合同</td></tr>',
+        '</table>',
+      ].join('\n');
+
+      const result = classifyHtmlTableBlocks(source);
+
+      expect(result.complex).toHaveLength(1);
+      expect(result.simple).toEqual([]);
+    });
+
+    it('treats tables with colspan as complex', () => {
+      const source = [
+        '<table>',
+        '<tr><th colspan="2">证据</th></tr>',
+        '<tr><td>1</td><td>合同</td></tr>',
+        '</table>',
+      ].join('\n');
+
+      const result = classifyHtmlTableBlocks(source);
+
+      expect(result.complex).toHaveLength(1);
+      expect(result.simple).toEqual([]);
+    });
+
+    it('partitions a mix of simple and complex tables and preserves source ranges', () => {
+      const source = [
+        '# 证据目录',
+        '',
+        '<table><tr><td>简单表</td></tr></table>',
+        '',
+        '<table>',
+        '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
+        '<tr><td>1</td><td>合同</td></tr>',
+        '</table>',
+        '',
+        '<table><tr><td>另一个简单表</td></tr></table>',
+      ].join('\n');
+
+      const result = classifyHtmlTableBlocks(source);
+
+      expect(result.simple.map((block) => block.index)).toEqual([0, 2]);
+      expect(result.complex.map((block) => block.index)).toEqual([1]);
+      expect(result.complex[0].html).toContain('rowspan="2"');
+      expect(result.complex[0].html).toContain('colspan="2"');
+    });
+
+    it('classifies tables inside fenced code blocks as ignored (treated as simple)', () => {
+      const source = [
+        '```html',
+        '<table><tr><td rowspan="2">fence</td></tr></table>',
+        '```',
+        '',
+        '<table><tr><td>real</td></tr></table>',
+      ].join('\n');
+
+      const result = classifyHtmlTableBlocks(source);
+
+      expect(result.complex).toEqual([]);
+      expect(result.simple.map((block) => block.index)).toEqual([0]);
+    });
   });
 });

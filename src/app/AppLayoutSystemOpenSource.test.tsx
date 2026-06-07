@@ -135,16 +135,14 @@ describe('AppLayout system open source editing', () => {
     expect(tauriFsMock.readTextFile).not.toHaveBeenCalled();
 
     await act(async () => {
-      await waitUntil(() => Array.from(host.querySelectorAll('button'))
-        .some((button) => button.textContent === '编辑源码'));
+      await waitUntil(() => Boolean(host.querySelector<HTMLButtonElement>('button[aria-label="源码模式"]')));
     });
 
-    const editSourceButton = Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent === '编辑源码');
-    expect(editSourceButton).toBeTruthy();
+    const sourceButton = host.querySelector<HTMLButtonElement>('button[aria-label="源码模式"]');
+    expect(sourceButton).toBeTruthy();
 
     await act(async () => {
-      editSourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      sourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await vi.dynamicImportSettled();
       await flushPromises();
       await flushPromises();

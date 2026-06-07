@@ -178,7 +178,7 @@ describe('AppLayout update flow', () => {
     expect(fileServiceMock.openPath).toHaveBeenCalledWith('/tmp/系统打开.md', 'UTF-8');
   });
 
-  it('passes the current HTML source into the source editor from stable reading mode', async () => {
+  it('passes the current HTML source into the source editor from the WYSIWYG pane', async () => {
     const source = '<!doctype html><html><body><h1>材料</h1><table><tr><td>正文</td></tr></table></body></html>';
     fileServiceMock.openFile.mockResolvedValue({
       path: '/tmp/materials.html',
@@ -200,12 +200,11 @@ describe('AppLayout update flow', () => {
       await flushPromises();
     });
 
-    const editSourceButton = Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent === '编辑源码');
-    expect(editSourceButton).toBeTruthy();
+    const sourceButton = host.querySelector<HTMLButtonElement>('button[aria-label="源码模式"]');
+    expect(sourceButton).toBeTruthy();
 
     await act(async () => {
-      editSourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      sourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await flushPromises();
       await flushPromises();
     });

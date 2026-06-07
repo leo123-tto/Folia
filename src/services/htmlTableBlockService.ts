@@ -322,3 +322,40 @@ export function replaceHtmlTableBlock(source: string, blockIndex: number, nextHt
 
   return `${source.slice(0, block.start)}${nextHtml}${source.slice(block.end)}`;
 }
+
+export type ClassifiedHtmlTableBlocks = {
+  simple: HtmlTableBlock[];
+  complex: HtmlTableBlock[];
+};
+
+const SIMPLE_TABLE_ELEMENT = 'div';
+
+function classifyTableHtml(html: string): boolean {
+  if (typeof DOMParser === 'undefined') return false;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<${SIMPLE_TABLE_ELEMENT}>${html}</${SIMPLE_TABLE_ELEMENT}>`, 'text/html');
+  const root = doc.querySelector(SIMPLE_TABLE_ELEMENT);
+  if (!root) return false;
+  return root.querySelector('[rowspan], [colspan]') !== null;
+}
+
+/**
+ * Splits the table blocks into two buckets based on whether they use
+ * `rowspan` / `colspan`. Complex tables (with merged cells) are locked
+ * inside the WYSIWYG editor; simple tables are editable and rely on the
+ * editor's normal HTML ↔ Markdown round-trip.
+ */
+export function classifyHtmlTableBlocks(source: string): ClassifiedHtmlTableBlocks {
+  const blocks = findHtmlTableBlocks(source);
+  const result: ClassifiedHtmlTableBlocks = { simple: [], complex: [] };
+
+  for (const block of blocks) {
+    if (classifyTableHtml(block.html)) {
+      result.complex.push(block);
+    } else {
+      result.simple.push(block);
+    }
+  }
+
+  return result;
+}
