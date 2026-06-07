@@ -80,7 +80,7 @@ describe('AppLayout source editor', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the original HTML file source in CodeMirror after stable preview source editing is opened', async () => {
+  it('renders the original HTML file source in CodeMirror after switching from the WYSIWYG pane', async () => {
     const source = [
       '<!doctype html>',
       '<html>',
@@ -114,12 +114,11 @@ describe('AppLayout source editor', () => {
       await flushPromises();
     });
 
-    const editSourceButton = Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent === '编辑源码');
-    expect(editSourceButton).toBeTruthy();
+    const sourceButton = host.querySelector<HTMLButtonElement>('button[aria-label="源码模式"]');
+    expect(sourceButton).toBeTruthy();
 
     await act(async () => {
-      editSourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      sourceButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       await vi.dynamicImportSettled();
       await flushPromises();
       await flushPromises();

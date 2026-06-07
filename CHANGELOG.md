@@ -8,6 +8,17 @@ All notable changes to this project will be documented in this file.
 
 - 底部状态栏新增"状态栏路径"设置项（外观页），可选"完整路径 / 仅文件名 / 首尾保留（推荐）"三种展示策略；默认"首尾保留"模式下，长路径会自动 ellipsis 收缩到 ≤60 字符且始终保留文件名，不会再撑开状态栏。完整路径仍可通过 `title` 提示或双击复制。
 - 状态栏高度固定为 22px；状态栏文案、复制反馈与"未保存"标记同步加 `flex-shrink: 0` 避免被长路径挤压。
+- 重构 HTML 阅读预览 / Markdown 预览切换为 Vditor WYSIWYG 一体化（ISS-155 / DEC-085）：所有 Markdown 与 HTML 文档默认直接进入 Vditor WYSIWYG（`mode: 'ir'`），普通段落与不含 `rowspan` / `colspan` 的简单表格内文字可直接编辑；含 `rowspan` / `colspan` 的复杂表格区域在 Vditor 中标记为 `contenteditable="false"` + `data-folia-locked="table"`，结构与文字均不可改，输入回调对比原 `findHtmlTableBlocks` 自动恢复被改动的复杂表格源码。
+
+### Removed
+
+- 删除 `htmlReadingPreference` 状态机、`canToggleHtmlReadingPreview` 派生、`handleExitHtmlReadingPreview` / `handleOpenHtmlReadingPreview`，以及顶部"普通 Markdown 预览 ↔ HTML 阅读预览"toolbar 切换按钮；删除 `html-reading-toolbar` 中"退出 HTML 预览 / 编辑表格"两个按钮和 `markdown-preview-toolbar` 整栏。
+- 删除结构化表格编辑入口 `htmlTableEditorVisible` 与 `HtmlTableEditor` 组件（用户确认不使用结构化编辑），Toolbar 源码按钮作为兜底编辑入口；`HtmlPresentationPane` 对 `.md` 文档的入口同步收紧为只对 `.html` / `.htm` 文件生效。
+
+### Added
+
+- 复杂表格上方 hover 出现"查看原貌"小图标（`<button class="folia-html-table-viewer-trigger">`），点击后弹出 `<HtmlTableViewerOverlay />` 渲染 `createHtmlReadingPreviewHtml` 的忠实 HTML 版本（独立容器，不打断 Vditor 状态），支持 ESC、关闭按钮、点击遮罩三种关闭方式。
+- `htmlTableBlockService` 暴露 `classifyHtmlTableBlocks()`，返回 `{ simple, complex }` 两桶以供 Vditor 锁定与输入拦截使用；新增 5 个 `classifyHtmlTableBlocks` 单元测试。
 
 ## [0.3.21]
 

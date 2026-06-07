@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { OpenedFile, TocItem } from '../types/document';
 import { createEmptyFile } from '../types/document';
@@ -11,7 +11,6 @@ import {
   updateSettings,
 } from '../services/settingsService';
 import { firstOpenableDocumentPath, isOpenableDocumentPath } from '../services/fileDrop';
-import { prefersStableHtmlPreview } from '../services/documentViewMode';
 import { useSettings } from '../hooks/useSettings';
 import {
   checkForAppUpdate,
@@ -22,7 +21,7 @@ import {
 } from '../services/updateService';
 import { scheduleDelayedAutoUpdateCheck } from '../services/autoUpdateScheduler';
 import { translate } from '../services/i18n';
-import { findHtmlTableBlocks } from '../services/htmlTableBlockService';
+import type { HtmlTableBlock } from '../services/htmlTableBlockService';
 import { Toolbar, type EditorMode } from '../components/Toolbar';
 import { StatusBar } from '../components/StatusBar';
 import { FloatingToc } from '../components/FloatingToc';
@@ -34,10 +33,6 @@ const EditorPane = lazy(() =>
 
 const WysiwygEditorPane = lazy(() =>
   import('../components/WysiwygEditorPane').then((module) => ({ default: module.WysiwygEditorPane })),
-);
-
-const PreviewPane = lazy(() =>
-  import('../components/PreviewPane').then((module) => ({ default: module.PreviewPane })),
 );
 
 const loadSettingsPage = () =>
@@ -73,13 +68,12 @@ const HtmlPresentationPane = lazy(() =>
   import('../components/HtmlPresentationPane').then((module) => ({ default: module.HtmlPresentationPane })),
 );
 
-const HtmlTableEditor = lazy(() =>
-  import('../components/HtmlTableEditor').then((module) => ({ default: module.HtmlTableEditor })),
+const HtmlTableViewerOverlay = lazy(() =>
+  import('../components/HtmlTableViewerOverlay').then((module) => ({ default: module.HtmlTableViewerOverlay })),
 );
 
 type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>;
 type RightPanelMode = 'none' | 'word' | 'wechat';
-type HtmlReadingPreference = 'auto' | 'markdown';
 type UpdateInstallState =
   | { phase: 'idle' }
   | { phase: 'downloading'; source: UpdateSource; update: AvailableUpdate }
@@ -145,12 +139,11 @@ export function AppLayout() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>('wysiwyg');
   const [sourceHeadingScrollRequest, setSourceHeadingScrollRequest] = useState<SourceHeadingScrollRequest>();
-  const [htmlReadingPreference, setHtmlReadingPreference] = useState<HtmlReadingPreference>('auto');
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('none');
   const [rightPanelWidth, setRightPanelWidth] = useState(460);
   const [resizing, setResizing] = useState(false);
   const [htmlPresentationVisible, setHtmlPresentationVisible] = useState(false);
-  const [htmlTableEditorVisible, setHtmlTableEditorVisible] = useState(false);
+  const [htmlTableViewer, setHtmlTableViewer] = useState<{ block: HtmlTableBlock } | null>(null);
   const [systemOpenChecked, setSystemOpenChecked] = useState(!isTauriRuntime);
   const [updateState, setUpdateState] = useState<UpdateInstallState>({ phase: 'idle' });
 
@@ -174,7 +167,6 @@ export function AppLayout() {
       setToc(extractToc(opened.content));
       if (opened.path) setLastOpenedPath(opened.path);
       setHtmlPresentationVisible(false);
-      setHtmlReadingPreference('auto');
       if (opened.fileType === 'docx') {
         setRightPanelMode('none');
       } else {
@@ -190,7 +182,6 @@ export function AppLayout() {
     setToc(opened.fileType === 'docx' ? [] : extractToc(opened.content));
     setLastOpenedPath(path);
     setHtmlPresentationVisible(false);
-    setHtmlReadingPreference('auto');
     if (opened.fileType === 'docx') {
       setRightPanelMode('none');
     } else {
@@ -279,24 +270,6 @@ export function AppLayout() {
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
-  }, []);
-
-  const handleOpenHtmlPresentation = useCallback(() => {
-    if (file.fileType !== 'html') return;
-    setRightPanelMode('none');
-    setHtmlPresentationVisible(true);
-  }, [file.fileType]);
-
-  const handleExitHtmlReadingPreview = useCallback(() => {
-    setHtmlPresentationVisible(false);
-    setHtmlReadingPreference('markdown');
-    setEditorMode('wysiwyg');
-  }, []);
-
-  const handleOpenHtmlReadingPreview = useCallback(() => {
-    setHtmlPresentationVisible(false);
-    setHtmlReadingPreference('auto');
-    setEditorMode('wysiwyg');
   }, []);
 
   const startBackgroundUpdateDownload = useCallback((source: UpdateSource, update: AvailableUpdate) => {
@@ -506,20 +479,11 @@ export function AppLayout() {
   const updateToolbarStatus = updateState.phase === 'ready' || updateState.phase === 'installing'
     ? { phase: updateState.phase, version: updateState.update.version }
     : undefined;
-  const stableHtmlPreviewPreferred = prefersStableHtmlPreview(file.content, file.fileType);
-  const canToggleHtmlReadingPreview = stableHtmlPreviewPreferred && file.fileType !== 'html' && !isDocx;
-  const shouldUseStableHtmlPreview = stableHtmlPreviewPreferred
-    && (!canToggleHtmlReadingPreview || htmlReadingPreference !== 'markdown');
   const shouldShowHtmlPresentation = htmlPresentationVisible && file.fileType === 'html' && !isDocx;
   const tocPinned = tocSessionPinned || settings.tocAlwaysPinned;
-  const htmlTableBlocks = useMemo(
-    () => shouldUseStableHtmlPreview && !isDocx ? findHtmlTableBlocks(file.content) : [],
-    [file.content, isDocx, shouldUseStableHtmlPreview],
-  );
   const mainContentClassName = [
     'main-content',
     isDocx ? 'docx-layout' : 'writing-layout',
-    shouldUseStableHtmlPreview && !isDocx ? 'html-reading-layout' : '',
     rightPanelMode !== 'none' && !isDocx ? 'right-panel-open' : '',
     rightPanelMode === 'word' && !isDocx ? 'word-preview-open' : '',
     rightPanelMode === 'wechat' && !isDocx ? 'wechat-preview-open' : '',
@@ -535,7 +499,7 @@ export function AppLayout() {
     if (!root) return null;
 
     const headings = root.querySelectorAll<HTMLElement>(
-      '.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-wysiwyg h1, .vditor-wysiwyg h2, .vditor-wysiwyg h3, .vditor-wysiwyg h4, .vditor-wysiwyg h5, .vditor-wysiwyg h6, .html-preview-pane h1, .html-preview-pane h2, .html-preview-pane h3, .html-preview-pane h4, .html-preview-pane h5, .html-preview-pane h6',
+      '.vditor-ir h1, .vditor-ir h2, .vditor-ir h3, .vditor-ir h4, .vditor-ir h5, .vditor-ir h6, .vditor-wysiwyg h1, .vditor-wysiwyg h2, .vditor-wysiwyg h3, .vditor-wysiwyg h4, .vditor-wysiwyg h5, .vditor-wysiwyg h6',
     );
     return headings[index] ?? null;
   }, []);
@@ -569,11 +533,13 @@ export function AppLayout() {
     updateSettings({ tocAlwaysPinned: nextAlwaysPinned });
   }, []);
 
-  const handleHtmlTableEditorSave = useCallback((nextSource: string) => {
-    handleContentChange(nextSource);
-    setHtmlTableEditorVisible(false);
-    setEditorMode('wysiwyg');
-  }, [handleContentChange]);
+  const handleHtmlTableView = useCallback((block: HtmlTableBlock) => {
+    setHtmlTableViewer({ block });
+  }, []);
+
+  const handleCloseHtmlTableViewer = useCallback(() => {
+    setHtmlTableViewer(null);
+  }, []);
 
   useEffect(() => {
     if (toc.length === 0) return;
@@ -619,7 +585,7 @@ export function AppLayout() {
       window.removeEventListener('resize', scheduleUpdate);
       observer?.disconnect();
     };
-  }, [editorMode, file.content, resolveTocHeading, shouldUseStableHtmlPreview, toc, rightPanelMode]);
+  }, [editorMode, file.content, resolveTocHeading, toc, rightPanelMode]);
 
   const editorPane = isDocx ? (
     <div className="editor-pane readonly-pane">
@@ -641,76 +607,10 @@ export function AppLayout() {
         onBack={() => setHtmlPresentationVisible(false)}
       />
     </Suspense>
-  ) : shouldUseStableHtmlPreview ? (
-    <div className="html-reading-pane" aria-label={t('htmlReadingTitle')}>
-      <div className="html-reading-toolbar">
-        <div className="html-reading-toolbar-copy">
-          <span>{t('htmlReadingTitle')}</span>
-          <small>{t('htmlReadingDesc')}</small>
-        </div>
-        <div className="html-reading-toolbar-actions">
-          {file.fileType === 'html' && (
-            <button
-              type="button"
-              className="settings-action-button html-reading-presentation-button"
-              onClick={handleOpenHtmlPresentation}
-            >
-              {t('htmlPresentationOpenLabel')}
-            </button>
-          )}
-          {canToggleHtmlReadingPreview && (
-            <button
-              type="button"
-              className="settings-action-button html-reading-markdown-button"
-              onClick={handleExitHtmlReadingPreview}
-            >
-              {t('exitHtmlReadingPreviewLabel')}
-            </button>
-          )}
-          <button
-            type="button"
-            className="settings-action-button html-reading-table-button"
-            disabled={htmlTableBlocks.length === 0}
-            onClick={() => setHtmlTableEditorVisible(true)}
-          >
-            {t('editTableLabel')}
-          </button>
-          <button
-            type="button"
-            className="settings-action-button html-reading-edit-button"
-            onClick={() => setEditorMode('source')}
-          >
-            {t('editSourceLabel')}
-          </button>
-        </div>
-      </div>
-      <Suspense fallback={<div className="preview-shell html-preview-pane" aria-label={t('htmlReadingTitle')} />}>
-        <PreviewPane
-          source={file.content}
-          tocIds={toc}
-          wideTables
-          renderMode={file.fileType === 'html' ? 'html' : 'markdown'}
-        />
-      </Suspense>
-    </div>
   ) : (
-    <div className={`markdown-editing-pane ${canToggleHtmlReadingPreview ? 'markdown-editing-pane--with-html-toggle' : ''}`}>
-      {canToggleHtmlReadingPreview && (
-        <div className="markdown-preview-toolbar" aria-label={t('markdownPreviewToolbarLabel')}>
-          <span>{t('markdownPreviewModeLabel')}</span>
-          <button
-            type="button"
-            className="settings-action-button markdown-preview-html-button"
-            onClick={handleOpenHtmlReadingPreview}
-          >
-            {t('openHtmlReadingPreviewLabel')}
-          </button>
-        </div>
-      )}
-      <Suspense fallback={<div className="wysiwyg-editor-pane lazy-pane"><span>所见即所得编辑器加载中</span></div>}>
-        <WysiwygEditorPane source={file.content} onChange={handleContentChange} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="wysiwyg-editor-pane lazy-pane"><span>所见即所得编辑器加载中</span></div>}>
+      <WysiwygEditorPane source={file.content} onChange={handleContentChange} onViewComplexTable={handleHtmlTableView} />
+    </Suspense>
   );
 
   const rightPanel = rightPanelMode === 'word' && !isDocx ? (
@@ -813,12 +713,11 @@ export function AppLayout() {
           />
         </Suspense>
       )}
-      {htmlTableEditorVisible && (
-        <Suspense fallback={<div className="settings-overlay" />}>
-          <HtmlTableEditor
-            source={file.content}
-            onSave={handleHtmlTableEditorSave}
-            onClose={() => setHtmlTableEditorVisible(false)}
+      {htmlTableViewer && (
+        <Suspense fallback={null}>
+          <HtmlTableViewerOverlay
+            block={htmlTableViewer.block}
+            onClose={handleCloseHtmlTableViewer}
           />
         </Suspense>
       )}
