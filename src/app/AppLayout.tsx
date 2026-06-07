@@ -41,7 +41,13 @@ const PreviewPane = lazy(() =>
 );
 
 const loadSettingsPage = () =>
-  import('../components/SettingsPage').then((module) => ({ default: module.SettingsPage }));
+  import('../components/SettingsPage').then(async (module) => {
+    // Warm the default section chunk alongside the settings page so the
+    // first tab is interactive as soon as the modal mounts.
+    const { preloadGeneralSection } = await import('../components/settings/preloadSections');
+    void preloadGeneralSection();
+    return { default: module.SettingsPage };
+  });
 
 let settingsPagePreload: ReturnType<typeof loadSettingsPage> | undefined;
 
@@ -336,14 +342,23 @@ export function AppLayout() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 'o') { e.preventDefault(); handleOpen(); }
-      if (mod && e.key === 's' && !e.shiftKey) { e.preventDefault(); handleSave(); }
-      if (mod && e.key === 's' && e.shiftKey) { e.preventDefault(); handleSaveAs(); }
-      if (mod && e.shiftKey && e.key === 'E') { e.preventDefault(); handleExportWord(); }
+      if (!mod) return;
+      if (e.key === 'o' && !e.shiftKey && !e.altKey) { e.preventDefault(); handleOpen(); return; }
+      if (e.key === 's' && e.shiftKey && !e.altKey) { e.preventDefault(); handleSaveAs(); return; }
+      if (e.key === 's' && !e.shiftKey && !e.altKey) { e.preventDefault(); handleSave(); return; }
+      if (e.key === 'e' && e.shiftKey && !e.altKey) { e.preventDefault(); handleExportWord(); return; }
+      if (e.key === 's' && e.altKey && !e.shiftKey) { e.preventDefault(); handleToggleEditorMode(); return; }
+      if (e.key === 'p' && e.altKey && !e.shiftKey) { e.preventDefault(); handleToggleWordPreview(); return; }
+      if (e.key === 'm' && e.altKey && !e.shiftKey) { e.preventDefault(); handleToggleWechatPreview(); return; }
+      if (e.key === ',' && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        void preloadSettingsPage();
+        setSettingsVisible(true);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleOpen, handleSave, handleSaveAs, handleExportWord]);
+  }, [handleOpen, handleSave, handleSaveAs, handleExportWord, handleToggleEditorMode, handleToggleWordPreview, handleToggleWechatPreview]);
 
   useEffect(() => {
     const handler = async (e: DragEvent) => {

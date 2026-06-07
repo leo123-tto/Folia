@@ -1,19 +1,41 @@
-import { useState, useEffect, useCallback } from 'react';
-import { GeneralSection } from './settings/GeneralSection';
-import { EditorSection } from './settings/EditorSection';
-import { PreviewSection } from './settings/PreviewSection';
-import { AppearanceSection } from './settings/AppearanceSection';
-import { ShortcutsSection } from './settings/ShortcutsSection';
-import { ExportSection } from './settings/ExportSection';
-import { HtmlExportSection } from './settings/WechatSection';
-import { LicenseSection } from './settings/LicenseSection';
-import { AboutSection } from './settings/AboutSection';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import type { UpdateCheckResult } from '../services/updateService';
 import { useSettings } from '../hooks/useSettings';
 import { translate } from '../services/i18n';
+import {
+  preloadAboutSection,
+  preloadAppearanceSection,
+  preloadEditorSection,
+  preloadExportSection,
+  preloadGeneralSection,
+  preloadHtmlExportSection,
+  preloadLicenseSection,
+  preloadPreviewSection,
+} from './settings/preloadSections';
 
 type AvailableUpdate = Extract<UpdateCheckResult, { status: 'available' }>;
-type SettingsSection = 'general' | 'editor' | 'preview' | 'appearance' | 'shortcuts' | 'export' | 'htmlExport' | 'license' | 'about';
+type SettingsSection =
+  | 'general'
+  | 'editor'
+  | 'preview'
+  | 'appearance'
+  | 'export'
+  | 'htmlExport'
+  | 'license'
+  | 'about';
+
+// Each section becomes its own chunk so opening the modal only downloads
+// the default tab, and switching tabs pulls in the corresponding chunk on
+// demand. Section preload helpers live in `preloadSections.ts` so this file
+// stays a pure component file (required by react-refresh).
+const GeneralSection = lazy(preloadGeneralSection);
+const EditorSection = lazy(preloadEditorSection);
+const PreviewSection = lazy(preloadPreviewSection);
+const AppearanceSection = lazy(preloadAppearanceSection);
+const ExportSection = lazy(preloadExportSection);
+const HtmlExportSection = lazy(preloadHtmlExportSection);
+const LicenseSection = lazy(preloadLicenseSection);
+const AboutSection = lazy(preloadAboutSection);
 
 interface SettingsPageProps {
   onClose: () => void;
@@ -25,12 +47,22 @@ const NAV_ITEMS: { id: SettingsSection; labelKey: Parameters<typeof translate>[1
   { id: 'editor', labelKey: 'navEditor' },
   { id: 'preview', labelKey: 'navPreview' },
   { id: 'appearance', labelKey: 'navAppearance' },
-  { id: 'shortcuts', labelKey: 'navShortcuts' },
   { id: 'export', labelKey: 'navExport' },
   { id: 'htmlExport', labelKey: 'navHtmlExport' },
   { id: 'license', labelKey: 'navLicense' },
   { id: 'about', labelKey: 'navAbout' },
 ];
+
+function SectionFallback() {
+  return (
+    <div className="settings-section settings-section-loading" aria-hidden="true">
+      <div className="settings-skeleton-heading" />
+      <div className="settings-skeleton-row" />
+      <div className="settings-skeleton-row" />
+      <div className="settings-skeleton-row short" />
+    </div>
+  );
+}
 
 export function SettingsPage({ onClose, onUpdateAvailable }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('general');
@@ -73,15 +105,16 @@ export function SettingsPage({ onClose, onUpdateAvailable }: SettingsPageProps) 
           </nav>
         </div>
         <div className="settings-modal-content">
-          {activeSection === 'general' && <GeneralSection />}
-          {activeSection === 'editor' && <EditorSection />}
-          {activeSection === 'preview' && <PreviewSection />}
-          {activeSection === 'appearance' && <AppearanceSection />}
-          {activeSection === 'shortcuts' && <ShortcutsSection />}
-          {activeSection === 'export' && <ExportSection onOpenLicense={() => setActiveSection('license')} />}
-          {activeSection === 'htmlExport' && <HtmlExportSection onOpenLicense={() => setActiveSection('license')} />}
-          {activeSection === 'license' && <LicenseSection />}
-          {activeSection === 'about' && <AboutSection onUpdateAvailable={onUpdateAvailable} />}
+          <Suspense fallback={<SectionFallback />}>
+            {activeSection === 'general' && <GeneralSection />}
+            {activeSection === 'editor' && <EditorSection />}
+            {activeSection === 'preview' && <PreviewSection />}
+            {activeSection === 'appearance' && <AppearanceSection />}
+            {activeSection === 'export' && <ExportSection onOpenLicense={() => setActiveSection('license')} />}
+            {activeSection === 'htmlExport' && <HtmlExportSection onOpenLicense={() => setActiveSection('license')} />}
+            {activeSection === 'license' && <LicenseSection />}
+            {activeSection === 'about' && <AboutSection onUpdateAvailable={onUpdateAvailable} />}
+          </Suspense>
         </div>
       </div>
     </div>

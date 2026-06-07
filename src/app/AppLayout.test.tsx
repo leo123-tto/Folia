@@ -76,6 +76,17 @@ vi.mock('../components/SettingsPage', () => ({
   ),
 }));
 
+vi.mock('../components/settings/preloadSections', () => ({
+  preloadGeneralSection: () => Promise.resolve(),
+  preloadEditorSection: () => Promise.resolve(),
+  preloadPreviewSection: () => Promise.resolve(),
+  preloadAppearanceSection: () => Promise.resolve(),
+  preloadExportSection: () => Promise.resolve(),
+  preloadHtmlExportSection: () => Promise.resolve(),
+  preloadLicenseSection: () => Promise.resolve(),
+  preloadAboutSection: () => Promise.resolve(),
+}));
+
 function flushPromises(): Promise<void> {
   return Promise.resolve();
 }
