@@ -272,16 +272,35 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   flex: 1;
   display: flex;
   overflow: hidden;
+  /* Main content must keep a readable line length even when a right panel
+     is open. The variable is reused by the right-panel clamp below to make
+     sure the panel never claims more width than the viewport allows. */
+  --main-min-width: 480px;
+  --main-resizer-gap: 9px;
 }
 
 .writing-layout .editor-pane,
 .writing-layout .wysiwyg-editor-pane,
-.writing-layout .markdown-editing-pane {
+.writing-layout .markdown-editing-pane,
+.writing-layout .html-presentation-pane,
+.writing-layout .html-reading-pane {
   flex: 1;
   display: flex;
   overflow: hidden;
   background: var(--bg);
   min-width: 0;
+}
+
+/* When a right panel is open, every writing-layout pane (including the HTML
+   presentation pane that replaces the editor in `html-presentation-layout`)
+   must refuse to shrink below the readable threshold. The right panel
+   instead takes the flex-shrink burden — see the clamp below. */
+.right-panel-open .writing-layout > .editor-pane,
+.right-panel-open .writing-layout > .wysiwyg-editor-pane,
+.right-panel-open .writing-layout > .markdown-editing-pane,
+.right-panel-open .writing-layout > .html-presentation-pane,
+.right-panel-open .writing-layout > .html-reading-pane {
+  min-width: var(--main-min-width);
 }
 
 .writing-layout .preview-shell {
@@ -290,9 +309,54 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
   background: var(--bg);
 }
 
+/* Right panel width: keep the user-resized `right-panel-width` when the
+   viewport is wide, but clamp it to never squeeze the main editor below
+   `--main-min-width`. We also bound it between the resizer's 360px floor and
+   the user-resized cap so the panel doesn't disappear at narrow viewports. */
 .right-panel-open .word-preview-panel,
-.right-panel-open .wechat-preview-panel {
-  flex: 0 0 var(--right-panel-width, 460px);
+.right-panel-open .wechat-preview-panel,
+.word-preview-open .word-preview-panel,
+.wechat-preview-open .wechat-preview-panel {
+  flex: 0 0 clamp(
+    360px,
+    var(--right-panel-width, 460px),
+    calc(100% - var(--main-min-width) - var(--main-resizer-gap))
+  );
+  min-width: 360px;
+}
+
+/* Explicit layout class for the HTML reading view. The pane is the main
+   content (no right panel in this mode) but still benefits from the same
+   480px readability floor so that the embedded Vditor preview does not get
+   squeezed by an unexpected sibling min-width. */
+.html-reading-layout .html-reading-pane,
+.html-reading-layout .preview-shell {
+  min-width: 0;
+}
+
+/* Explicit layout class for the HTML presentation view. The presentation
+   iframe needs at least the readable line length; if the FloatingToc is
+   pinned it claims 260px so we set a 480px floor that competes with it via
+   `min-width` — the parent flex container will scroll horizontally if the
+   viewport cannot satisfy both. */
+.html-presentation-layout .html-presentation-pane {
+  min-width: var(--main-min-width);
+  flex-shrink: 1;
+}
+
+/* Below 850px (480 main + 9 resizer + 360 right panel = 849) the right
+   panel cannot co-exist with the 480px main editor floor. WordPaperPreviewPane
+   auto-closes itself in this range (see its useEffect) and the CSS clamp
+   below uses the viewport width to make sure that any in-flight render
+   still respects the 480px main area instead of overflowing into a
+   clipped, unusable side panel. */
+@media (max-width: 860px) {
+  .right-panel-open .word-preview-panel,
+  .right-panel-open .wechat-preview-panel,
+  .word-preview-open .word-preview-panel,
+  .wechat-preview-open .wechat-preview-panel {
+    flex-basis: clamp(360px, var(--right-panel-width, 460px), calc(100vw - var(--main-min-width) - var(--main-resizer-gap)));
+  }
 }
 
 .docx-layout .docx-preview-area {
@@ -3068,41 +3132,6 @@ a.about-info-value:hover {
 
 @keyframes folia-spin {
   to { transform: rotate(360deg); }
-}
-
-/* ===== Shortcut List ===== */
-
-.shortcut-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 38px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.shortcut-row:last-child {
-  border-bottom: none;
-}
-
-.shortcut-label {
-  font-size: 14px;
-  color: var(--fg);
-}
-
-.shortcut-keys {
-  display: flex;
-  gap: 4px;
-}
-
-.shortcut-key {
-  padding: 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--bg);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--muted);
 }
 
 /* ===== Toolbar Settings Button ===== */
