@@ -744,16 +744,93 @@ test('settings about section exposes update controls', async ({ page }) => {
   await expect(page.getByText('更新源')).toHaveCount(0);
 });
 
-test('shortcuts settings keep only the core commands', async ({ page }) => {
+test('settings nav exposes 8 sections and hides the legacy shortcuts tab (ISS-153)', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '设置' }).click();
-  await page.getByRole('button', { name: '快捷键' }).click();
 
-  await expect(page.getByText('打开文件', { exact: true })).toBeVisible();
-  await expect(page.getByText('保存', { exact: true })).toBeVisible();
-  await expect(page.getByText('另存为')).toBeVisible();
-  await expect(page.getByText('导出 Word')).toBeVisible();
-  await expect(page.getByText('命令面板')).toHaveCount(0);
+  const navButtons = page.locator('.settings-nav .settings-nav-item');
+  await expect(navButtons).toHaveCount(8);
+  await expect(navButtons).toHaveText([
+    '通用',
+    '编辑器',
+    '预览',
+    '外观',
+    'Word 导出',
+    'HTML 导出',
+    '授权',
+    '关于',
+  ]);
+  await expect(page.getByRole('button', { name: '快捷键', exact: true })).toHaveCount(0);
+});
+
+test('toolbar buttons expose keyboard shortcuts in their hover titles (ISS-153)', async ({ page }) => {
+  await page.goto('/');
+
+  const expectations: Array<{ name: RegExp | string; shortcut: RegExp }> = [
+    { name: '打开文件', shortcut: /Cmd\+O|Ctrl\+O/ },
+    { name: '保存当前文件', shortcut: /Cmd\+S|Ctrl\+S/ },
+    { name: '另存为新文件', shortcut: /Cmd\+Shift\+S|Ctrl\+Shift\+S/ },
+    { name: '源码模式', shortcut: /Cmd\+Alt\+S|Ctrl\+Alt\+S/ },
+    { name: 'Word 预览', shortcut: /Cmd\+Alt\+P|Ctrl\+Alt\+P/ },
+    { name: 'HTML 预览', shortcut: /Cmd\+Alt\+M|Ctrl\+Alt\+M/ },
+    { name: '设置', shortcut: /Cmd\+,|Ctrl\+,/ },
+  ];
+
+  for (const { name, shortcut } of expectations) {
+    const button = page.getByRole('button', { name }).first();
+    const title = await button.getAttribute('title');
+    expect(title ?? '', `Toolbar button "${name}" should declare a keyboard shortcut in its title`).toMatch(shortcut);
+  }
+});
+
+test('settings modal switches tabs by lazy loading each section on demand (ISS-152)', async ({ page }) => {
+  await page.goto('/');
+
+  // Measure end-to-end latency from clicking the settings button until the
+  // main content heading becomes visible. Cold chunk downloads should not
+  // noticeably block the default section.
+  const settingsButton = page.getByRole('button', { name: '设置' });
+  const start = Date.now();
+  await settingsButton.click();
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '通用' })).toBeVisible();
+  const coldOpenMs = Date.now() - start;
+
+  // Each tab should resolve its own section chunk on demand. We assert only
+  // that switching to every non-default tab eventually surfaces its heading
+  // — the lazy chunks must be loaded after the initial render.
+  const sections: Array<{ tab: string; heading: RegExp }> = [
+    { tab: '编辑器', heading: /编辑器/ },
+    { tab: '预览', heading: /预览/ },
+    { tab: '外观', heading: /外观/ },
+    { tab: 'Word 导出', heading: /Word 导出预设/ },
+    { tab: 'HTML 导出', heading: /HTML 导出预设/ },
+    { tab: '授权', heading: /内测授权/ },
+    { tab: '关于', heading: /关于/ },
+  ];
+
+  for (const { tab, heading } of sections) {
+    await page.getByRole('button', { name: tab, exact: true }).click();
+    await expect(page.getByRole('heading', { heading })).toBeVisible();
+  }
+
+  // The cold open should feel snappy; we set a generous 2.5s budget to absorb
+  // CI jitter while still catching major regressions vs. the original
+  // ~5s+ skeleton experience reported in ISS-152.
+  expect(coldOpenMs).toBeLessThan(2500);
+});
+
+test('Cmd+, opens the settings modal from anywhere (ISS-153)', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.settings-modal')).toHaveCount(0);
+  await page.keyboard.press('Meta+,');
+  // The skeleton renders immediately, but the real SettingsPage (which
+  // registers the Escape handler) only mounts after the lazy chunk resolves.
+  // Wait for the skeleton to disappear before exercising the shortcut.
+  await expect(page.locator('.settings-modal-skeleton')).toHaveCount(0);
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.settings-modal')).toHaveCount(0);
 });
 
 test('long HTML evidence tables wrap inside the preview pane', async ({ page }) => {
@@ -1131,4 +1208,147 @@ test('settings modal first frame is non-blank after cache is cleared', async ({ 
 
   await waitForElementAnimations(page, '.settings-modal');
   await expect(page.locator('.settings-modal-content')).toBeVisible();
+});
+
+test('status bar shows the no-file placeholder and keeps a fixed height when no document is open', async ({ page }) => {
+  await page.goto('/');
+
+  const statusBar = page.locator('.status-bar');
+  await expect(statusBar).toBeVisible();
+
+  const path = page.locator('.status-path');
+  await expect(path).toHaveText('未打开文件');
+
+  const box = await statusBar.boundingBox();
+  expect(box?.height ?? 0).toBeLessThanOrEqual(22);
+});
+
+test('status bar path style setting is wired in the appearance section and persists changes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+
+  const select = page.getByLabel('状态栏路径');
+  await expect(select).toBeVisible();
+  await expect(select).toHaveValue('middle');
+
+  await select.selectOption('basename');
+  let persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('basename');
+
+  await select.selectOption('full');
+  persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('full');
+
+  await select.selectOption('middle');
+  persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('folia-settings') || '{}').statusBarPathStyle);
+  expect(persisted).toBe('middle');
+});
+
+test('status bar path style setting falls back to middle when the stored value is invalid', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('folia-settings', JSON.stringify({ statusBarPathStyle: 'garbage' }));
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: '设置' }).click();
+  await expect(page.locator('.settings-modal')).toBeVisible();
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+
+  const select = page.getByLabel('状态栏路径');
+  await expect(select).toHaveValue('middle');
+});
+
+/* ===== ISS-150: Right panel must not squeeze the main editor ===== */
+
+test('Word preview keeps the main editor at least 480px wide on a standard 1280px viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Word 预览' }).click();
+  await expect(page.locator('.word-preview-panel')).toBeVisible();
+
+  const editor = page.locator('.wysiwyg-editor-pane');
+  const editorBox = await editor.boundingBox();
+  expect(editorBox).not.toBeNull();
+  expect(editorBox!.width).toBeGreaterThanOrEqual(480);
+});
+
+test('Word preview auto-collapses on a narrow 800x600 viewport so the editor stays readable', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await page.goto('/');
+
+  const editor = page.locator('.wysiwyg-editor-pane');
+
+  const initialBox = await editor.boundingBox();
+  expect(initialBox).not.toBeNull();
+  const initialWidth = initialBox!.width;
+  expect(initialWidth).toBeLessThanOrEqual(800);
+
+  await page.getByRole('button', { name: 'Word 预览' }).click();
+
+  /* At 800px the panel cannot host both the 480px main editor and the 360px
+     right panel, so the toggle is a no-op and the editor keeps its full
+     width. */
+  await expect(page.locator('.word-preview-panel')).toHaveCount(0);
+  const afterBox = await editor.boundingBox();
+  expect(afterBox).not.toBeNull();
+  expect(afterBox!.width).toBeGreaterThanOrEqual(480);
+  expect(afterBox!.width).toBeCloseTo(initialWidth, 0);
+});
+
+test('Word preview auto-collapses when the viewport shrinks below 850px while open', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Word 预览' }).click();
+  await expect(page.locator('.word-preview-panel')).toBeVisible();
+
+  /* Shrink the viewport — WordPaperPreviewPane's resize listener should
+     auto-close the panel so the editor keeps its readability floor. */
+  await page.setViewportSize({ width: 800, height: 600 });
+  await expect(page.locator('.word-preview-panel')).toHaveCount(0);
+  const editorBox = await page.locator('.wysiwyg-editor-pane').boundingBox();
+  expect(editorBox).not.toBeNull();
+  expect(editorBox!.width).toBeGreaterThanOrEqual(480);
+});
+
+test('HTML presentation view keeps at least 480px width on a narrow 800x600 viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await page.goto('/');
+
+  /* The HTML presentation layout is the only place where the editor pane
+     is replaced by an isolated iframe. Verify the CSS keeps the pane at
+     the readable floor even when the FloatingToc claims its pinned
+     width. We do this by applying the layout class directly and checking
+     the resolved min-width. */
+  const minWidth = await page.evaluate(() => {
+    const main = document.createElement('div');
+    main.className = 'main-content html-presentation-layout';
+    main.style.width = '800px';
+    main.style.display = 'flex';
+
+    const toc = document.createElement('div');
+    toc.className = 'floating-toc pinned';
+    toc.style.flex = '0 0 260px';
+    toc.style.minWidth = '200px';
+    main.appendChild(toc);
+
+    const pane = document.createElement('div');
+    pane.className = 'html-presentation-pane';
+    pane.style.flex = '1';
+    main.appendChild(pane);
+
+    document.body.appendChild(main);
+    const computed = getComputedStyle(pane).minWidth;
+    document.body.removeChild(main);
+    return parseFloat(computed);
+  });
+
+  /* The CSS rule sets `min-width: var(--main-min-width)` which is 480px.
+     When the FloatingToc is pinned (260px) and the viewport is 800px, the
+     pane's resolved min-width must be at least 480px so the iframe inside
+     never gets squeezed below the readable line length. */
+  expect(minWidth).toBeGreaterThanOrEqual(480);
 });

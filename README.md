@@ -47,6 +47,23 @@ open /Applications/Folia.app
 - 自动检查更新默认开启，也可在设置 / 关于中手动检查或关闭
 - 安全处理：Vditor 内置 XSS 过滤（sanitize: true）
 
+## 快捷键
+
+快捷键以 `（Cmd+…）` 后缀直接写在工具栏按钮的 hover `title` 中，中 / 英 / 日三语同步，鼠标悬停即可看到。设置页不再有独立的"快捷键"Tab。
+
+| 动作 | macOS |
+|------|-------|
+| 打开文件 | `Cmd+O` |
+| 保存 | `Cmd+S` |
+| 另存为 | `Cmd+Shift+S` |
+| 切换源码编辑 | `Cmd+Alt+S` |
+| 切换 Word 纸张预览 | `Cmd+Alt+P` |
+| 切换 HTML 预览 | `Cmd+Alt+M` |
+| 打开设置 | `Cmd+,` |
+| 导出 Word（预览面板内） | `Cmd+Shift+E` |
+
+在 Windows / Linux 上把 `Cmd` 替换为 `Ctrl` 即可（快捷键监听器同时识别 `metaKey` 与 `ctrlKey`）。
+
 ## 技术栈
 
 - Tauri v2

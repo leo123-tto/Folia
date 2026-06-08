@@ -301,6 +301,17 @@ transition: background 0.15s;
 - 左侧导航固定 204px，右侧内容滚动；切换二级菜单时弹窗外框不随内容高度跳动
 - Select 使用自定义平面样式，禁止 macOS 原生渐变光泽；交互反馈仅使用 border / outline / accent
 - Word 导出预设不做复杂编辑器；用户新增样式通过空槽位导入 JSON 文件，JSON 示例页只展示可选中复制的示例文本；启用/停用、删除自定义预设、选择当前预设、槽位状态和单页纸预览保留。预览纸张可点击放大查看，放大层尺寸不超过设置弹窗尺度。槽位展示只表达本地容量状态。
+- 导航 8 个 Tab（通用 / 编辑器 / 预览 / 外观 / Word 导出 / HTML 导出 / 授权 / 关于），不设独立的"快捷键"Tab：快捷键应在用户实际操作工具时随时看到，hover Toolbar 按钮的 `title` 后缀已经承载（详见下方"快捷键展示规范"）。
+- 模态按 Tab 懒加载子 section：`SettingsPage` 模块本身只 import 导航框架和 preload helper；每个 section 通过 `React.lazy` 单独 chunk。`preloadSettingsPage` 在挂载时并行预热默认的 `GeneralSection` chunk；切换到其他 Tab 才下载对应 section。`ExportSection` / `WechatSection` 因为依赖 `word/config` / `wechatPreviewService` / `htmlExportPresets` 等较重模块，分包收益最明显。骨架屏行数与导航数一致（当前 8 行）。
+
+### 快捷键展示规范
+
+- 快捷键信息直接写在 Toolbar 等可交互元素的 `title` 文案末尾，统一使用全角括号包裹，中 / 英 / 日 i18n 三语同步：
+  - zh-CN：例如 `打开文件：Markdown / HTML / Word（Cmd+O）`
+  - en-US：例如 `Open file: Markdown / HTML / Word (Cmd+O)`
+  - ja-JP：例如 `ファイルを開く: Markdown / HTML / Word（Cmd+O）`
+- `Cmd` 是 macOS 习惯用名；快捷键监听器同时识别 `metaKey` 与 `ctrlKey`，Windows / Linux 用户按 `Ctrl` 同样生效。E2E 校验用 `Cmd+X` 与 `Ctrl+X` 双正则匹配，覆盖两套平台。
+- 设置页不再展示快捷键列表；用户通过 Toolbar 按钮 hover 即看即用，避免设置页与实际工具栏文案两套信息源。
 
 ### Toggle Switch
 
