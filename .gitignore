@@ -31,6 +31,7 @@ src-tauri/target/
 .worktrees/
 .claude/worktrees/
 .claude/settings.local.json
+.claude/settings.json
 
 # Test artifacts
 test-results/
