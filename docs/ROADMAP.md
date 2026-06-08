@@ -72,8 +72,9 @@
 - [x] 支持导入自定义 JSON 导出预设：内置预设继续保留，用户新增预设通过完整 JSON 模板导入，并兼容 md2word 风格 JSON 字段别名和单位
 - [x] 参考 Funes 接入自动更新：启动后延迟检查、Settings / 关于手动检查、后台下载、下载完成后顶部重启更新
 - [x] 验证复杂 HTML table 默认走稳定阅读预览，不被 WYSIWYG 压窄或破坏结构；Markdown 文档可手动退出 HTML 阅读预览回到普通 Markdown 预览；Word 纸张预览继续不横向撑破纸张
-- [x] TOC 改为默认浮动大纲：弱刻度显示，hover / click / focus 展开，面板按钮固定 / 关闭，固定态支持“总是固定大纲”偏好，点击条目跳转
+- [x] TOC 改为默认浮动大纲：弱刻度显示，hover / click / focus 展开，面板按钮固定 / 关闭，固定态支持”总是固定大纲”偏好，点击条目跳转
 - [x] HTML 演示预览：直接打开受信任 HTML 演示文件，隔离运行其 JS/CSS/本地资源，并支持常见翻页操作
+- [x] Vditor WYSIWYG 一体化（ISS-155 / DEC-085）：所有 Markdown / HTML 文档默认进入 Vditor IR；含 `rowspan/colspan` 的复杂表格在 Vditor 中自动锁定（`contenteditable=false` + `data-folia-locked=”table”`），输入回调对比 `classifyHtmlTableBlocks` 自动恢复被改动的复杂表源码；hover 复杂表格弹出”查看原貌”图标，弹窗渲染 `createHtmlReadingPreviewHtml` 忠实 HTML；删除结构化表格编辑、HTML 阅读预览切换按钮、`html-reading-toolbar` / `markdown-preview-toolbar` 整段
 - [ ] 继续提升 WYSIWYG 编辑细节：快捷格式化、表格编辑工具、复杂 HTML 块的编辑提示
 
 ### v0.5 桌面发布体验（已完成）

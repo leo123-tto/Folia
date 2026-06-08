@@ -53,12 +53,14 @@
   ↓
 documentViewMode 检测文件类型与原生 HTML table
   ↓
-┌─ WysiwygEditorPane: 普通 Markdown 默认懒加载 Vditor IR 即时渲染模式，input(value) 更新 state
+┌─ WysiwygEditorPane: 默认懒加载 Vditor IR 即时渲染模式（DEC-085 起成为唯一默认），普通 Markdown 段落 + 简单表格（无 rowspan/colspan）直接编辑；input(value) 更新 state
+│    ├─ 挂载 / setValue 后：lockComplexTables() 找含合并属性的 <table>，打 contenteditable=false + data-folia-locked="table" + data-folia-locked-index
+│    ├─ input(value) 回调：用 classifyHtmlTableBlocks 对比原复杂表，若被改动则 replaceHtmlTableBlock 恢复并 setValue
+│    └─ mouseover / mouseout：动态注入 .folia-html-table-viewer-trigger（Eye 图标），点击回调 onViewComplexTable → AppLayout.setHtmlTableViewer
 │
-├─ PreviewPane: 原生 HTML table 使用 Vditor.preview() 稳定阅读预览；.html 文件提取 body 后走安全 HTML 阅读预览；AppLayout 提供“编辑表格”“编辑源码”和 Markdown 文档退出 HTML 预览入口
-│    └─ HtmlTableEditor: 选择单个 table block，编辑 HtmlTableModel，保存时只替换该 block
+├─ EditorPane: 用户点击 Toolbar "源码模式" 后才懒加载 CodeMirror，onChange 更新 state
 │
-├─ EditorPane: 用户点击“源码模式”后才懒加载 CodeMirror，onChange 更新 state
+├─ HtmlTableViewerOverlay: 渲染 createHtmlReadingPreviewHtml(block.html)（DOMPurify 清洗）的忠实 HTML，ESC / 关闭按钮 / 点击遮罩三种关闭路径
 │
 └─ WordPaperPreviewPane:
      用户点击“Word 预览”后才懒加载
@@ -121,11 +123,10 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 |------|------|
 | `fileService.ts` | 封装 Tauri dialog、桌面端后端文档读写命令与浏览器 fallback，提供 openFile / saveFile / saveFileAs |
 | `fileDrop.ts` | 过滤可拖入打开的 Markdown / HTML / Word 文件路径 |
-| `documentViewMode.ts` | 内部判断文档是否默认应使用稳定 HTML 阅读预览，避免复杂 HTML table 被 WYSIWYG 压窄或破坏；用户手动退出由 AppLayout 的当前文档状态处理 |
+| `documentViewMode.ts` | 内部判断文档是否默认应使用稳定 HTML 阅读预览，避免复杂 HTML table 被 WYSIWYG 压窄或破坏；用户手动退出由 AppLayout 的当前文档状态处理（ISS-155 落地后该判断仅在保留的 `htmlPresentationVisible` 路径下消费，默认渲染已统一为 WYSIWYG） |
 | `htmlTableModel.ts` | 将单个原生 HTML table 解析为共享结构模型，保留行列坐标、合并单元格、section、单元格 HTML/文本与属性 |
-| `htmlTableBlockService.ts` | 从 Markdown / HTML 源码中定位和替换单个 `<table>...</table>` 区块，忽略 fenced code 中的表格文本 |
-| `htmlTableEditorService.ts` | 结构化编辑器的纯函数操作：更新 origin cell HTML、追加行列、保守删除行列，并在写回前重建 grid |
-| `htmlReadingPreviewService.ts` | `.html/.htm` 安全阅读预览服务：提取 `<body>` 内容，DOMPurify 清洗后仅保留受控的对齐、垂直对齐和空白样式 |
+| `htmlTableBlockService.ts` | 从 Markdown / HTML 源码中定位和替换单个 `<table>...</table>` 区块，忽略 fenced code 中的表格文本；暴露 `classifyHtmlTableBlocks()` 把表格按是否含 rowspan/colspan 拆分为 `{ simple, complex }` 两桶（ISS-155） |
+| `htmlReadingPreviewService.ts` | `.html/.htm` / 复杂表格"查看原貌"共享后端：提取 `<body>` 内容，DOMPurify 清洗后仅保留受控的对齐、垂直对齐和空白样式 |
 | `titlebarDrag.ts` | 自定义 overlay Toolbar 的拖动 fallback，过滤按钮后调用 Tauri `startDragging()` / `toggleMaximize()` |
 | `markdownFeatureDetector.ts` | 轻量扫描 Markdown fenced code 类型，为 Vditor 预览提供内部资源触发判断 |
 | `vditorPreviewConfig.ts` | 按需提供 Vditor.preview 所需中文文案，避免纯预览链路额外请求 i18n 脚本 |
@@ -148,10 +149,9 @@ word/table-handler.ts 输出 docx Table；Markdown 管道表格使用专用 pars
 | 文件 | 职责 |
 |------|------|
 | `EditorPane.tsx` | CodeMirror 6 编辑器，Markdown 语言模式；接收 TOC 标题跳转请求并滚动到对应源码标题行 |
-| `WysiwygEditorPane.tsx` | Vditor IR 即时渲染编辑器，普通 Markdown 的默认主编辑体验；当前块显示 Markdown 标记，非当前块保持预览观感 |
-| `PreviewPane.tsx` | `Vditor.preview()` 稳定阅读预览，原生 HTML table 和 `.html` 文件默认使用；外层由 AppLayout 提供表格编辑、源码编辑和 Markdown 文档退出 HTML 预览入口 |
-| `HtmlTableEditor.tsx` | HTML table 结构化编辑 modal：列出 table blocks，网格展示 origin cells，编辑单元格 HTML，并调用 block 替换保存 |
-| `HtmlPresentationPane.tsx` | HTML 演示模式主视图：用 sandbox iframe 运行 `.html/.htm` 文件内容，提供上一页、下一页和返回阅读预览操作 |
+| `WysiwygEditorPane.tsx` | Vditor IR 即时渲染编辑器，所有 Markdown / HTML 文档的默认主编辑体验（ISS-155 落地后成为唯一默认）；当前块显示 Markdown 标记，非当前块保持预览观感；含 `rowspan/colspan` 的复杂表格自动打 `contenteditable=false` + `data-folia-locked="table"`，hover 注入"查看原貌"按钮触发 AppLayout viewer 状态，输入回调对比 `classifyHtmlTableBlocks` 自动恢复被改动的复杂表 |
+| `HtmlTableViewerOverlay.tsx` | 复杂表格"查看原貌"独立 overlay：渲染 `createHtmlReadingPreviewHtml(block.html)` 的忠实 HTML，ESC / 关闭按钮 / 点击遮罩三种关闭路径（ISS-155 新增） |
+| `HtmlPresentationPane.tsx` | HTML 演示模式主视图：用 sandbox iframe 运行 `.html/.htm` 文件内容，提供上一页、下一页和返回阅读预览操作；ISS-155 落地后入口收紧为只对 `.html/.htm` 触发 |
 | `WordPaperPreviewPane.tsx` | 按需打开的 Word 多页纸张预览，包含启用预设弹出选择器、面板内导出按钮、A4 分页、长 HTML 表格按行拆页和整体缩放 |
 | `WechatPreviewPane.tsx` | 按需打开的 HTML 预览面板，保留旧文件名作为兼容层；负责 Vditor 渲染、当前 HTML 预设预览、复制到公众号编辑器和导出 HTML |
 | `Toolbar.tsx` | 工具栏：打开 / 保存 / 另存为 / 源码模式 / Word 预览 / HTML 预览 / 下载完成后的重启更新 / 设置 |

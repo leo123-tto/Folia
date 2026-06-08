@@ -384,86 +384,93 @@ test('source edits are reflected when switching back to WYSIWYG', async ({ page 
   await expect(page.locator('.wysiwyg-editor-pane')).toContainText('证据目录');
 });
 
-test('raw HTML tables use the stable reading preview instead of WYSIWYG editing', async ({ page }) => {
+test('ordinary Markdown editing is the default in the WYSIWYG pane (no preview toggle)', async ({ page }) => {
   await page.goto('/');
   await openEditor(page);
-  await page.keyboard.insertText([
-    '<table>',
-    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
-    '<tr><th>名称</th><th>证明目的</th></tr>',
-    '<tr><td>1</td><td>合同</td><td>证明合同关系</td></tr>',
-    '</table>',
-  ].join('\n'));
+  await page.keyboard.insertText('# 大文件\n\n这是一个很长的 Markdown 文件开头。\n\n后续还有大量正文，需要普通 Markdown 预览继续阅读。');
 
   await page.getByRole('button', { name: '源码模式' }).click();
-  const table = page.locator('.html-preview-pane table').first();
-  await expect(table).toBeVisible();
-  await expect(page.locator('.html-preview-pane th[colspan="2"]')).toBeVisible();
-  await expect(page.locator('.html-preview-pane th[rowspan="2"]')).toBeVisible();
-  await expect(page.locator('.wysiwyg-editor-pane')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '退出 HTML 预览' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '编辑源码' })).toBeVisible();
-
-  const tableWidth = await table.evaluate((el) => el.getBoundingClientRect().width);
-  expect(tableWidth).toBeGreaterThan(560);
-
-  const previewPadding = await page.locator('.html-table-preview-content').evaluate((el) => {
-    const style = getComputedStyle(el);
-    return {
-      top: parseFloat(style.paddingTop),
-      bottom: parseFloat(style.paddingBottom),
-    };
-  });
-  expect(previewPadding.top).toBeLessThanOrEqual(12);
-  expect(previewPadding.bottom).toBeLessThanOrEqual(12);
-  expect(previewPadding.top).toBeGreaterThanOrEqual(8);
-  expect(previewPadding.bottom).toBeGreaterThanOrEqual(8);
-
-  await page.getByRole('button', { name: '编辑源码' }).click();
-  await expect(page.locator('.cm-editor')).toBeVisible();
-  await expect(page.locator('.cm-content')).toContainText('rowspan');
-});
-
-test('HTML table Markdown can leave stable preview and return to ordinary Markdown preview', async ({ page }) => {
-  await page.goto('/');
-  await openEditor(page);
-  await page.keyboard.insertText([
-    '# 大文件',
-    '',
-    '这是一个很长的 Markdown 文件开头。',
-    '',
-    '<table>',
-    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
-    '<tr><th>名称</th><th>证明目的</th></tr>',
-    '<tr><td>1</td><td>合同</td><td>证明合同关系</td></tr>',
-    '</table>',
-    '',
-    '后续还有大量正文，需要普通 Markdown 预览继续阅读。',
-  ].join('\n'));
-
-  await page.getByRole('button', { name: '源码模式' }).click();
-  await expect(page.locator('.html-preview-pane table')).toBeVisible();
-
-  await page.getByRole('button', { name: '退出 HTML 预览' }).click();
-  await expect(page.locator('.html-preview-pane')).toHaveCount(0);
   await expect(page.locator('.wysiwyg-editor-pane')).toBeVisible();
   await expect(page.locator('.wysiwyg-editor-pane')).toContainText('大文件');
-  await expect(page.getByRole('button', { name: 'HTML 阅读预览' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'HTML 阅读预览' }).click();
-  await expect(page.locator('.html-preview-pane table')).toBeVisible();
-  await expect(page.locator('.wysiwyg-editor-pane')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '退出 HTML 预览' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'HTML 阅读预览' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '编辑表格' })).toHaveCount(0);
+  await expect(page.locator('.html-reading-pane')).toHaveCount(0);
+  await expect(page.locator('.html-preview-pane')).toHaveCount(0);
 });
 
-test('HTML table editor updates one table block and keeps rowspan and colspan in stable preview', async ({ page }) => {
+test('complex HTML table renders inside WYSIWYG and exposes the view-original trigger on hover', async ({ page }) => {
   await page.goto('/');
   await openEditor(page);
   await page.keyboard.insertText([
-    '# 表格编辑回归',
+    '<table>',
+    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
+    '<tr><th>名称</th><th>证明目的</th></tr>',
+    '<tr><td>1</td><td>合同</td><td>证明合同关系</td></tr>',
+    '</table>',
+  ].join('\n'));
+
+  await page.getByRole('button', { name: '源码模式' }).click();
+  await expect(page.locator('.wysiwyg-editor-pane')).toBeVisible();
+  const lockedTable = page.locator('.wysiwyg-editor-pane table[data-folia-locked="table"]');
+  await expect(lockedTable).toBeVisible();
+  await expect(lockedTable).toHaveAttribute('contenteditable', 'false');
+  await expect(page.locator('.wysiwyg-editor-pane th[colspan="2"]')).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane th[rowspan="2"]')).toBeVisible();
+
+  await lockedTable.hover();
+  const trigger = page.locator('.folia-html-table-viewer-trigger').first();
+  await expect(trigger).toBeVisible();
+
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: '查看表格原貌' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('table')).toContainText('证据');
+  await expect(dialog.locator('th[colspan="2"]')).toBeVisible();
+  await expect(dialog.locator('th[rowspan="2"]')).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
+test('complex table cells are locked while the rest of the document remains editable', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText([
+    '# 标题',
     '',
-    '<table id="first"><tr><td>A保留</td></tr></table>',
+    '这是普通 Markdown 正文，可以编辑。',
     '',
-    '正文保持不变',
+    '<table>',
+    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
+    '<tr><td>1</td><td>合同</td></tr>',
+    '</table>',
+    '',
+    '表格之后的正文。',
+  ].join('\n'));
+
+  await page.getByRole('button', { name: '源码模式' }).click();
+  const wysiwyg = page.locator('.wysiwyg-editor-pane');
+  await expect(wysiwyg).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane table[data-folia-locked="table"]')).toBeVisible();
+
+  const surface = page.locator('.vditor-ir:visible, .vditor-wysiwyg:visible').first();
+  await surface.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('新增的 Markdown 段落。');
+
+  await expect(wysiwyg).toContainText('新增的 Markdown 段落');
+  await expect(wysiwyg).toContainText('表格之后的正文');
+  await expect(page.locator('.wysiwyg-editor-pane th[colspan="2"]')).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane th[rowspan="2"]')).toBeVisible();
+});
+
+test('switching to source mode after editing keeps the original complex table intact', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText([
+    '# 表格保护回归',
     '',
     '<table class="target">',
     '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
@@ -471,37 +478,54 @@ test('HTML table editor updates one table block and keeps rowspan and colspan in
     '<tr><td>1</td><td>旧合同</td><td>证明合同关系</td></tr>',
     '</table>',
     '',
-    '尾部保持不变',
+    '正文保持不变',
   ].join('\n'));
 
   await page.getByRole('button', { name: '源码模式' }).click();
-  await expect(page.locator('.html-preview-pane table')).toHaveCount(2);
-  await expect(page.getByRole('button', { name: '编辑表格' })).toBeVisible();
+  await expect(page.locator('.wysiwyg-editor-pane table[data-folia-locked="table"]')).toBeVisible();
+  const surface = page.locator('.vditor-ir:visible, .vditor-wysiwyg:visible').first();
+  await surface.click();
+  await page.keyboard.press('End');
+  await page.keyboard.insertText('\n\n新增段落。');
 
-  await page.getByRole('button', { name: '编辑表格' }).click();
-  await expect(page.getByRole('dialog', { name: '结构化编辑表格' })).toBeVisible();
-  await page.getByRole('button', { name: '表格 2' }).click();
-  await page.getByRole('button', { name: '选择单元格 3-2' }).click();
-  await page.getByLabel('单元格 HTML').fill('<p><strong>补充合同</strong></p>');
-  await page.getByRole('button', { name: '保存表格' }).click();
+  await expect(page.locator('.wysiwyg-editor-pane')).toContainText('新增段落');
 
-  await expect(page.getByRole('dialog', { name: '结构化编辑表格' })).toHaveCount(0);
-  await expect(page.locator('.html-preview-pane table')).toHaveCount(2);
-  await expect(page.locator('.html-preview-pane table').nth(0)).toContainText('A保留');
-  await expect(page.locator('.html-preview-pane table').nth(1)).toContainText('补充合同');
-  await expect(page.locator('.html-preview-pane th[rowspan="2"]')).toBeVisible();
-  await expect(page.locator('.html-preview-pane th[colspan="2"]')).toBeVisible();
-  await expect(page.getByText('正文保持不变')).toBeVisible();
-  await expect(page.getByText('尾部保持不变')).toBeVisible();
-
-  await page.getByRole('button', { name: '编辑源码' }).click();
+  await page.getByRole('button', { name: '源码模式' }).click();
   const source = page.locator('.cm-content');
-  await expect(source).toContainText('<table id="first"><tr><td>A保留</td></tr></table>');
-  await expect(source).toContainText('正文保持不变');
   await expect(source).toContainText('<table class="target">');
-  await expect(source).toContainText('<td><p><strong>补充合同</strong></p></td>');
-  await expect(source).toContainText('尾部保持不变');
-  await expect(source).not.toContainText('旧合同');
+  await expect(source).toContainText('rowspan="2"');
+  await expect(source).toContainText('colspan="2"');
+  await expect(source).toContainText('旧合同');
+  await expect(source).toContainText('正文保持不变');
+  await expect(source).toContainText('新增段落');
+});
+
+test('view-original overlay closes via close button and overlay click', async ({ page }) => {
+  await page.goto('/');
+  await openEditor(page);
+  await page.keyboard.insertText([
+    '<table>',
+    '<tr><th rowspan="2">序号</th><th colspan="2">证据</th></tr>',
+    '<tr><td>1</td><td>合同</td></tr>',
+    '</table>',
+  ].join('\n'));
+
+  await page.getByRole('button', { name: '源码模式' }).click();
+  const lockedTable = page.locator('.wysiwyg-editor-pane table[data-folia-locked="table"]');
+  await expect(lockedTable).toBeVisible();
+  await lockedTable.hover();
+  await page.locator('.folia-html-table-viewer-trigger').first().click();
+  const dialog = page.getByRole('dialog', { name: '查看表格原貌' });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await lockedTable.hover();
+  await page.locator('.folia-html-table-viewer-trigger').first().click();
+  await expect(dialog).toBeVisible();
+  await page.locator('.html-table-viewer-overlay').click({ position: { x: 5, y: 5 } });
+  await expect(dialog).toHaveCount(0);
 });
 
 test('legacy Markdown preview is not mounted by default', async ({ page }) => {
@@ -619,8 +643,8 @@ test('preview body text consumes the selected Chinese font stack', async ({ page
   ].join('\n'));
 
   await page.getByRole('button', { name: '源码模式' }).click();
-  const paragraph = page.locator('.html-preview-pane .preview-content > p').first();
-  await expect(paragraph).toContainText('中文正文');
+  const paragraph = page.locator('.wysiwyg-editor-pane p').filter({ hasText: '中文正文' }).first();
+  await expect(paragraph).toBeVisible();
 
   await page.getByRole('button', { name: '设置' }).click();
   await page.getByRole('button', { name: '预览', exact: true }).click();
