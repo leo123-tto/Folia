@@ -42,3 +42,6 @@ website/dist/
 # Local AI working context
 docs/DECISIONS.md
 docs/TASKS.md
+
+# Playwright MCP verification artifacts
+.playwright-mcp/
