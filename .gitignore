@@ -29,9 +29,8 @@ src-tauri/target/
 
 # Claude Code
 .worktrees/
-.claude/worktrees/
-.claude/agent-sessions/
-.claude/settings.json
+.claude/*
+!.claude/settings.local.json
 
 # Test artifacts
 test-results/
