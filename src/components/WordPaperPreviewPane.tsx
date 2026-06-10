@@ -9,6 +9,7 @@ import { getMarkdownStyleName, getStyle } from '../services/word/style-mapping';
 import { createWordPreviewStyle } from '../services/wordPreviewStyle';
 import type { PresetConfig, PresetId } from '../services/word';
 import type { PresetTableFontConfig } from '../services/word/types';
+import { resolveLocalImages } from '../services/localImageResolver';
 
 type WordPaperPreviewPaneProps = {
   source: string;
@@ -16,6 +17,7 @@ type WordPaperPreviewPaneProps = {
   canExport: boolean;
   onExportWord: () => void;
   onClose: () => void;
+  filePath?: string;
 };
 
 const CSS_PX_PER_CM = 96 / 2.54;
@@ -396,6 +398,7 @@ export function WordPaperPreviewPane({
   canExport,
   onExportWord,
   onClose,
+  filePath,
 }: WordPaperPreviewPaneProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -503,6 +506,7 @@ export function WordPaperPreviewPane({
       if (cancelled || !measureRef.current || !pagesRef.current) return;
 
       measureRef.current.innerHTML = artifact.html;
+      void resolveLocalImages(measureRef.current, filePath);
       applyWordPreviewPresetPostprocess(measureRef.current, preset);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
@@ -519,7 +523,7 @@ export function WordPaperPreviewPane({
     return () => {
       cancelled = true;
     };
-  }, [contentHeightPx, deferredSource, preset]);
+  }, [contentHeightPx, deferredSource, filePath, preset]);
 
   const selectPreset = (id: PresetId) => {
     setExportPreset(id);

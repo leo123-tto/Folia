@@ -6,15 +6,17 @@ import { detectMarkdownRenderFeatures } from '../services/markdownFeatureDetecto
 import { resolvePreviewFontFamily, resolvePreviewHeadingFontFamily, resolvePreviewChineseFontFamily, resolvePreviewLatinFontFamily } from '../services/settingsService';
 import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
 import { createHtmlReadingPreviewHtml } from '../services/htmlReadingPreviewService';
+import { resolveLocalImages } from '../services/localImageResolver';
 
 type PreviewPaneProps = {
   source: string;
   tocIds: TocItem[];
   wideTables?: boolean;
   renderMode?: 'markdown' | 'html';
+  filePath?: string;
 };
 
-export function PreviewPane({ source, tocIds, wideTables = false, renderMode = 'markdown' }: PreviewPaneProps) {
+export function PreviewPane({ source, tocIds, wideTables = false, renderMode = 'markdown', filePath }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const deferredSource = useDeferredValue(source);
   const deferredTocIds = useDeferredValue(tocIds);
@@ -39,6 +41,7 @@ export function PreviewPane({ source, tocIds, wideTables = false, renderMode = '
 
     if (renderMode === 'html') {
       el.innerHTML = createHtmlReadingPreviewHtml(deferredSource);
+      void resolveLocalImages(el, filePath);
       applyTocIds(el, deferredTocIds);
       return;
     }
@@ -68,7 +71,9 @@ export function PreviewPane({ source, tocIds, wideTables = false, renderMode = '
           sanitize: true,
         },
         after() {
-          if (cancelled || deferredTocIds.length === 0) return;
+          if (cancelled) return;
+          void resolveLocalImages(el, filePath);
+          if (deferredTocIds.length === 0) return;
           applyTocIds(el, deferredTocIds);
         },
       });
@@ -77,7 +82,7 @@ export function PreviewPane({ source, tocIds, wideTables = false, renderMode = '
     return () => {
       cancelled = true;
     };
-  }, [deferredSource, deferredTocIds, renderFeatures.hasHighlightableCode, renderMode]);
+  }, [deferredSource, deferredTocIds, filePath, renderFeatures.hasHighlightableCode, renderMode]);
 
   return (
     <div

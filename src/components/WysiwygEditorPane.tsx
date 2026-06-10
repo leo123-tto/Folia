@@ -7,11 +7,13 @@ import {
 } from '../services/htmlTableBlockService';
 import { useSettings } from '../hooks/useSettings';
 import { translate } from '../services/i18n';
+import { resolveLocalImages } from '../services/localImageResolver';
 
 type WysiwygEditorPaneProps = {
   source: string;
   onChange: (value: string) => void;
   onViewComplexTable?: (block: HtmlTableBlock, anchor: HTMLElement) => void;
+  filePath?: string;
 };
 
 // 复用 IR 模式展开 → 自动折叠的"停顿"延迟（ISS-151）
@@ -39,7 +41,7 @@ function collapseExpandedMarkers(editor: import('vditor').default | null): void 
   });
 }
 
-export function WysiwygEditorPane({ source, onChange, onViewComplexTable }: WysiwygEditorPaneProps) {
+export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePath }: WysiwygEditorPaneProps) {
   const settings = useSettings();
   const t = useCallback(
     (key: Parameters<typeof translate>[1]) => translate(settings.locale, key),
@@ -139,6 +141,8 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable }: Wysi
              build may run before our ref is set. Locking here is idempotent. */
           queueMicrotask(() => {
             lockComplexTables();
+            const host = hostRef.current;
+            if (host) void resolveLocalImages(host, filePath);
           });
         },
         input(value) {
@@ -229,7 +233,7 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable }: Wysi
       editorRef.current = null;
       lastComplexBlocksRef.current = [];
     };
-  }, [lockComplexTables, onChange]);
+  }, [filePath, lockComplexTables, onChange]);
 
   useEffect(() => {
     const editor = editorRef.current;

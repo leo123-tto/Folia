@@ -624,7 +624,7 @@ export function AppLayout() {
     </Suspense>
   ) : (
     <Suspense fallback={<div className="wysiwyg-editor-pane lazy-pane"><span>所见即所得编辑器加载中</span></div>}>
-      <WysiwygEditorPane source={file.content} onChange={handleContentChange} onViewComplexTable={handleHtmlTableView} />
+      <WysiwygEditorPane source={file.content} onChange={handleContentChange} onViewComplexTable={handleHtmlTableView} filePath={file.path} />
     </Suspense>
   );
 
@@ -636,6 +636,7 @@ export function AppLayout() {
         canExport={Boolean(file.path)}
         onExportWord={handleExportWord}
         onClose={() => setRightPanelMode('none')}
+        filePath={file.path}
       />
     </Suspense>
   ) : rightPanelMode === 'wechat' && !isDocx ? (
@@ -644,6 +645,7 @@ export function AppLayout() {
         source={file.content}
         fileName={file.name}
         onClose={() => setRightPanelMode('none')}
+        filePath={file.path}
       />
     </Suspense>
   ) : null;

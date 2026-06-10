@@ -17,11 +17,13 @@ import {
 } from '../services/wechatPreviewService';
 import { getHtmlExportPresetDefinition } from '../services/htmlExportPresets';
 import type { HtmlExportPresetId } from '../services/htmlExportPresets';
+import { resolveLocalImages } from '../services/localImageResolver';
 
 type WechatPreviewPaneProps = {
   source: string;
   fileName?: string;
   onClose: () => void;
+  filePath?: string;
 };
 
 type ActionStatus = {
@@ -30,7 +32,7 @@ type ActionStatus = {
   text: string;
 };
 
-export function WechatPreviewPane({ source, fileName = 'document.md', onClose }: WechatPreviewPaneProps) {
+export function WechatPreviewPane({ source, fileName = 'document.md', onClose, filePath }: WechatPreviewPaneProps) {
   const settings = useSettings();
   const t = (key: Parameters<typeof translate>[1]) => translate(settings.locale, key);
   const deferredSource = useDeferredValue(source);
@@ -101,6 +103,7 @@ export function WechatPreviewPane({ source, fileName = 'document.md', onClose }:
         },
         after() {
           if (cancelled || renderIdRef.current !== renderId) return;
+          void resolveLocalImages(el, filePath);
           setPreviewResult(createHtmlExportResult(deferredSource, el.innerHTML, {
             preset: htmlExportPreset,
             title: fileName,
@@ -119,7 +122,7 @@ export function WechatPreviewPane({ source, fileName = 'document.md', onClose }:
     return () => {
       cancelled = true;
     };
-  }, [deferredSource, fileName, htmlExportPreset, renderFeatures.hasHighlightableCode, sourceIsEmpty]);
+  }, [deferredSource, fileName, filePath, htmlExportPreset, renderFeatures.hasHighlightableCode, sourceIsEmpty]);
 
   const effectiveStatus = sourceIsEmpty ? 'empty' : status;
   const effectiveActionStatus = sourceIsEmpty ? null : actionStatus;

@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- 修复 Markdown 文件中通过 `![](./path.webp)` 引用的本地相对路径图片（WebP / PNG / JPG / GIF 等）无法在 Vditor 编辑区、Word 纸张预览、HTML 导出预览中正常渲染的问题：新增 `localImageResolver` 服务，在 Vditor 渲染完成后自动将 `<img src="./relative">` 解析为 Tauri asset 协议 URL（`https://asset.localhost/...`），与已有的 `htmlPresentationService` 共用路径解析逻辑。`.webp` 与 `.png` / `.jpg` 表现一致。
+
 - 修复 Vditor WYSIWYG（即时渲染）模式中输入 `**foo**` 后 `**` 字符仍以蓝色 marker 持续可见、加粗看上去未生效的问题：`WysiwygEditorPane` 监听 `keydown` 钩子并在停顿 220ms 后强制清除 IR 节点的 `vditor-ir__node--expand` class，与 Vditor 自身 `blurEvent` 行为对齐；编辑过程中不打断用户，持续键入时 marker 仍可见，停顿后自动折叠。
 
 - 修复打开右侧 Word / HTML 预览面板时主 Markdown 区域被反向压扁、行宽急剧收窄的问题：`.main-content` 引入 `--main-min-width: 480px` 阈值，主编辑 / 预览 / HTML 演示容器在 `.right-panel-open` 下保证 480px 最低行宽；右侧面板宽度改为 `clamp(360px, var(--right-panel-width, 460px), calc(100% - 489px))`；800×600 视口下 Word 预览自动折叠，1280×800 视口主区保持可读。新增 `.html-presentation-layout` / `.html-reading-layout` / `.word-preview-open` / `.wechat-preview-open` 显式规则，消除 dangling class。
