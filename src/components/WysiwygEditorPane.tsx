@@ -144,6 +144,17 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable }: Wysi
         input(value) {
           if (applyingExternalValue.current) return;
 
+          // ISS-151: 每次 input 后安排折叠定时器。
+          // 粘贴（insertText）不触发 keydown，所以需要在 input 中也安排折叠，
+          // 避免粘贴 `**foo**` 后 marker 一直保持展开。
+          if (collapseTimerRef.current !== null) {
+            window.clearTimeout(collapseTimerRef.current);
+          }
+          collapseTimerRef.current = window.setTimeout(() => {
+            collapseTimerRef.current = null;
+            collapseExpandedMarkers(editorRef.current);
+          }, IR_MARKER_COLLAPSE_DELAY_MS);
+
           const complex = lastComplexBlocksRef.current;
           if (complex.length === 0) {
             onChange(value);
