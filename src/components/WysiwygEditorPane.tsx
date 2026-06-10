@@ -8,6 +8,7 @@ import {
 import { useSettings } from '../hooks/useSettings';
 import { translate } from '../services/i18n';
 import { resolveLocalImages } from '../services/localImageResolver';
+import { openExternalUrl } from '../services/urlOpener';
 
 type WysiwygEditorPaneProps = {
   source: string;
@@ -120,6 +121,12 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
         resize: { enable: false },
         counter: { enable: false },
         cache: { enable: false },
+        link: {
+          click(element: Element) {
+            const url = element.getAttribute('href') ?? element.textContent ?? '';
+            if (url) void openExternalUrl(url);
+          },
+        },
         preview: {
           markdown: {
             sanitize: true,

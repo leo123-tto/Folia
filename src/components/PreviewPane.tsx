@@ -7,6 +7,7 @@ import { resolvePreviewFontFamily, resolvePreviewHeadingFontFamily, resolvePrevi
 import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
 import { createHtmlReadingPreviewHtml } from '../services/htmlReadingPreviewService';
 import { resolveLocalImages } from '../services/localImageResolver';
+import { openExternalUrl } from '../services/urlOpener';
 
 type PreviewPaneProps = {
   source: string;
@@ -18,6 +19,7 @@ type PreviewPaneProps = {
 
 export function PreviewPane({ source, tocIds, wideTables = false, renderMode = 'markdown', filePath }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const deferredSource = useDeferredValue(source);
   const deferredTocIds = useDeferredValue(tocIds);
   const settings = useSettings();
@@ -84,8 +86,26 @@ export function PreviewPane({ source, tocIds, wideTables = false, renderMode = '
     };
   }, [deferredSource, deferredTocIds, filePath, renderFeatures.hasHighlightableCode, renderMode]);
 
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    function handleClick(e: MouseEvent) {
+      const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+      e.preventDefault();
+      void openExternalUrl(href);
+    }
+
+    shell.addEventListener('click', handleClick);
+    return () => shell.removeEventListener('click', handleClick);
+  }, []);
+
   return (
     <div
+      ref={shellRef}
       className={`preview-shell ${wideTables ? 'html-preview-pane' : ''}`}
       aria-label={wideTables ? 'HTML 阅读预览' : 'Markdown 阅读预览'}
       style={{
