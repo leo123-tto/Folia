@@ -41,6 +41,7 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 }
 
 // 后端 read_opened_document 拒绝超大文件时返回的错误特征（ISS-159）。
+// 与 lib.rs 的超限文案一一对应；契约守卫见 fileService.test.ts 的 BACKEND_OVERSIZED_FILE_ERROR。
 const OVERSIZED_FILE_PATTERN = /file too large/i;
 
 function describeError(error: unknown): string {

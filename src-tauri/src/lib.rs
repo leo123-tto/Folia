@@ -35,6 +35,8 @@ fn read_opened_document_bytes(path: &Path) -> Result<Vec<u8>, String> {
   let metadata = std::fs::metadata(path)
     .map_err(|error| format!("failed to read document: {error}"))?;
   if metadata.len() > MAX_OPENED_DOCUMENT_BYTES {
+    // 该文案被前端 fileService 的 OVERSIZED_FILE_PATTERN 匹配以决定是否弹原生提示；
+    // 改文案时需同步 src/services/fileService.test.ts 的 BACKEND_OVERSIZED_FILE_ERROR（ISS-159）。
     return Err(format!(
       "file too large: {} bytes exceeds the {} byte limit",
       metadata.len(),

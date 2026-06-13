@@ -17,6 +17,30 @@ vi.mock('@tauri-apps/api/core', () => tauriCoreMock);
 
 vi.mock('@tauri-apps/plugin-fs', () => tauriFsMock);
 
+// 与 src-tauri/src/lib.rs 中 read_opened_document_bytes 的超限错误文案保持一致；
+// 前端 fileService 用 OVERSIZED_FILE_PATTERN 匹配该串以决定是否弹原生提示。
+// 修改 Rust 端文案时必须同步更新本常量与下面的匹配断言（ISS-159 契约守卫）。
+const BACKEND_OVERSIZED_FILE_ERROR =
+  'file too large: 12345678 bytes exceeds the 10485760 byte limit';
+
+const dialogMock = vi.hoisted(() => ({
+  message: vi.fn().mockResolvedValue(undefined),
+  open: vi.fn(),
+  save: vi.fn(),
+}));
+
+const settingsMock = vi.hoisted(() => ({
+  getSettings: vi.fn(() => ({ locale: 'zh-CN' })),
+}));
+
+const i18nMock = vi.hoisted(() => ({
+  translate: vi.fn((_locale: unknown, key: unknown) => `__tr:${String(key)}`),
+}));
+
+vi.mock('@tauri-apps/plugin-dialog', () => dialogMock);
+vi.mock('./settingsService', () => settingsMock);
+vi.mock('./i18n', () => i18nMock);
+
 function bytesOf(value: string): number[] {
   return Array.from(new TextEncoder().encode(value));
 }
@@ -105,5 +129,33 @@ describe('fileService', () => {
     expect(tauriFsMock.writeTextFile).not.toHaveBeenCalled();
     expect(saved.dirty).toBe(false);
     expect(saved.lastSavedContent).toBe('# 修改后');
+  });
+
+  it('shows a native prompt when the backend rejects an oversized file', async () => {
+    // 契约守卫：后端超限错误文案必须被前端 OVERSIZED_FILE_PATTERN 命中（ISS-159）。
+    // 修改 lib.rs 文案时同步更新 BACKEND_OVERSIZED_FILE_ERROR，此断言即第一道防线。
+    expect(/file too large/i.test(BACKEND_OVERSIZED_FILE_ERROR)).toBe(true);
+
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { configurable: true, value: {} });
+    tauriCoreMock.invoke.mockRejectedValue(new Error(BACKEND_OVERSIZED_FILE_ERROR));
+
+    await expect(openPath('/Users/demo/huge.md', 'UTF-8')).rejects.toThrow(BACKEND_OVERSIZED_FILE_ERROR);
+
+    expect(settingsMock.getSettings).toHaveBeenCalledTimes(1);
+    expect(i18nMock.translate).toHaveBeenCalledWith('zh-CN', 'openFileTooLargeMessage');
+    expect(dialogMock.message).toHaveBeenCalledTimes(1);
+    expect(dialogMock.message).toHaveBeenCalledWith('__tr:openFileTooLargeMessage', {
+      title: 'huge.md',
+      kind: 'warning',
+    });
+  });
+
+  it('does not show the oversized prompt for unrelated read errors', async () => {
+    Object.defineProperty(window, '__TAURI_INTERNALS__', { configurable: true, value: {} });
+    tauriCoreMock.invoke.mockRejectedValue(new Error('failed to read document: permission denied'));
+
+    await expect(openPath('/Users/demo/perm.md', 'UTF-8')).rejects.toThrow();
+
+    expect(dialogMock.message).not.toHaveBeenCalled();
   });
 });

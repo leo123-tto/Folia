@@ -144,6 +144,13 @@ export function AppLayout() {
   const mainContentRef = useRef<HTMLDivElement>(null);
   // 防抖挂起的 TOC 刷新定时器；卸载时清掉，避免 stale setToc（ISS-159）。
   const tocRefreshTimerRef = useRef<number | null>(null);
+  // 取消挂起的 TOC 防抖刷新：打开新文件 / 卸载时调用，避免上一个文件的过期 setToc 覆盖新文件大纲（ISS-159）。
+  const cancelPendingTocRefresh = useCallback(() => {
+    if (tocRefreshTimerRef.current !== null) {
+      window.clearTimeout(tocRefreshTimerRef.current);
+      tocRefreshTimerRef.current = null;
+    }
+  }, []);
   const [file, setFile] = useState<OpenedFile>(createEmptyFile());
   const [toc, setToc] = useState<TocItem[]>([]);
   const [tocSessionPinned, setTocSessionPinned] = useState(false);
@@ -166,13 +173,8 @@ export function AppLayout() {
 
   // 卸载时取消挂起的 TOC 防抖，避免离开后仍触发 stale setToc（ISS-159）。
   useEffect(() => {
-    return () => {
-      if (tocRefreshTimerRef.current !== null) {
-        window.clearTimeout(tocRefreshTimerRef.current);
-        tocRefreshTimerRef.current = null;
-      }
-    };
-  }, []);
+    return () => cancelPendingTocRefresh();
+  }, [cancelPendingTocRefresh]);
 
   useEffect(() => {
     /* Kick off the settings chunk immediately on mount so the modal is fully
@@ -186,6 +188,7 @@ export function AppLayout() {
     const opened = await openFile(settings.defaultEncoding);
     if (opened) {
       setFile(opened);
+      cancelPendingTocRefresh();
       setToc(extractToc(opened.content));
       if (opened.path) setLastOpenedPath(opened.path);
       setHtmlPresentationVisible(false);
@@ -195,12 +198,13 @@ export function AppLayout() {
         setEditorMode('wysiwyg');
       }
     }
-  }, [settings.defaultEncoding]);
+  }, [settings.defaultEncoding, cancelPendingTocRefresh]);
 
   const handleOpenPath = useCallback(async (path: string) => {
     const { openPath } = await import('../services/fileService');
     const opened = await openPath(path, settings.defaultEncoding);
     setFile(opened);
+    cancelPendingTocRefresh();
     setToc(opened.fileType === 'docx' ? [] : extractToc(opened.content));
     setLastOpenedPath(path);
     setHtmlPresentationVisible(false);
@@ -209,7 +213,7 @@ export function AppLayout() {
     } else {
       setEditorMode('wysiwyg');
     }
-  }, [settings.defaultEncoding]);
+  }, [settings.defaultEncoding, cancelPendingTocRefresh]);
 
   const handleSave = useCallback(async () => {
     if (file.fileType === 'docx') return;
