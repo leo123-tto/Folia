@@ -57,6 +57,8 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
   const collapseTimerRef = useRef<number | null>(null);
   const lastComplexBlocksRef = useRef<HtmlTableBlock[]>([]);
   const [phase, setPhase] = useState<EditorPhase>('loading');
+  // retryKey 递增时强制重新初始化 Vditor
+  const [retryKey, setRetryKey] = useState(0);
   // 如果 [source] effect 在 editor 就绪前触发，缓存待应用的内容
   const pendingSourceRef = useRef<string | null>(null);
 
@@ -275,7 +277,7 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
       lastComplexBlocksRef.current = [];
       pendingSourceRef.current = null;
     };
-  }, [filePath, lockComplexTables, onChange]);
+  }, [filePath, lockComplexTables, onChange, retryKey]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -373,7 +375,7 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
           <button
             type="button"
             className="settings-action-button"
-            onClick={() => setPhase('loading')}
+            onClick={() => { setPhase('loading'); setRetryKey((k) => k + 1); }}
           >
             {t('retryLabel')}
           </button>
