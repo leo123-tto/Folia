@@ -818,7 +818,7 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
 .lazy-pane {
   align-items: center;
   justify-content: center;
-  color: var(--border);
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
 }
@@ -826,6 +826,21 @@ html[data-runtime='tauri'][data-platform='macos'] .app-toolbar {
 /* ===== Markdown Preview Mode ===== */
 
 /* ===== WYSIWYG Editor Pane ===== */
+
+.wysiwyg-editor-pane--error {
+  align-items: center;
+  justify-content: center;
+}
+
+.wysiwyg-editor-error {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wysiwyg-editor-error p {
+  margin: 0 0 12px;
+}
 
 .wysiwyg-editor-pane {
   height: 100%;

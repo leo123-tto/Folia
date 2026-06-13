@@ -27,6 +27,8 @@ All notable changes to this project will be documented in this file.
 
 - 修复 Vditor WYSIWYG（即时渲染）模式中输入 `**foo**` 后 `**` 字符仍以蓝色 marker 持续可见、加粗看上去未生效的问题：`WysiwygEditorPane` 监听 `keydown` 钩子并在停顿 220ms 后强制清除 IR 节点的 `vditor-ir__node--expand` class，与 Vditor 自身 `blurEvent` 行为对齐；编辑过程中不打断用户，持续键入时 marker 仍可见，停顿后自动折叠。
 
+- 修复打开 Markdown 文件时偶发白屏的问题（v0.3.21 仍存在）：`WysiwygEditorPane` 的 Vditor 初始化 Promise 缺少 `.catch()` 错误处理，任何 import 或初始化失败均静默吞没；`[source]` effect 在 Vditor 就绪前触发时 `editorRef.current` 为 `null`，`setValue` 被跳过后不再重试，导致内容永远不显示。修复后新增 `phase` 状态追踪（`loading → ready | error`），`[source]` effect 在 editor 未就绪时将内容缓存到 `pendingSourceRef`，`after()` 回调中补偿应用；初始化失败时显示可见错误信息和重试按钮。Suspense fallback 文字颜色从 `var(--border)` 改为 `var(--muted)`（浅色主题下可辨别）。中 / 英 / 日三语同步新增 `editorAriaLabel` / `editorInitFailed` / `retryLabel`。
+
 - 修复打开右侧 Word / HTML 预览面板时主 Markdown 区域被反向压扁、行宽急剧收窄的问题：`.main-content` 引入 `--main-min-width: 480px` 阈值，主编辑 / 预览 / HTML 演示容器在 `.right-panel-open` 下保证 480px 最低行宽；右侧面板宽度改为 `clamp(360px, var(--right-panel-width, 460px), calc(100% - 489px))`；800×600 视口下 Word 预览自动折叠，1280×800 视口主区保持可读。新增 `.html-presentation-layout` / `.html-reading-layout` / `.word-preview-open` / `.wechat-preview-open` 显式规则，消除 dangling class。
 
 ### Added

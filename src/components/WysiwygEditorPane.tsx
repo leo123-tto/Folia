@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { VDITOR_PREVIEW_I18N } from '../services/vditorPreviewConfig';
 import {
   classifyHtmlTableBlocks,
@@ -27,6 +27,8 @@ const FOLIA_TRIGGER_ATTR = 'data-folia-viewer-bound';
 const ICON_SIZE = 14;
 const ICON_STROKE_WIDTH = 1.6;
 
+type EditorPhase = 'loading' | 'ready' | 'error';
+
 function getIrElement(editor: import('vditor').default): HTMLElement | null {
   // vditor.ir 是运行期挂载的 IR 视图容器；通过 unknown 转换避免依赖内部类型
   const vditor = (editor as unknown as { vditor?: { ir?: { element?: HTMLElement } } }).vditor;
@@ -54,6 +56,9 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
   const latestSource = useRef(source);
   const collapseTimerRef = useRef<number | null>(null);
   const lastComplexBlocksRef = useRef<HtmlTableBlock[]>([]);
+  const [phase, setPhase] = useState<EditorPhase>('loading');
+  // 如果 [source] effect 在 editor 就绪前触发，缓存待应用的内容
+  const pendingSourceRef = useRef<string | null>(null);
 
   useEffect(() => {
     latestSource.current = source;
@@ -103,6 +108,8 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
     if (!host) return;
 
     let cancelled = false;
+    setPhase('loading');
+
     void Promise.all([
       import('vditor/dist/index.css'),
       import('vditor'),
@@ -142,15 +149,37 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
           },
         },
         after() {
+          if (cancelled) return;
+
           const initial = classifyHtmlTableBlocks(latestSource.current);
           lastComplexBlocksRef.current = initial.complex;
           /* setValue already triggers after() once internally, but the first
              build may run before our ref is set. Locking here is idempotent. */
           queueMicrotask(() => {
+            if (cancelled) return;
             lockComplexTables();
             const host = hostRef.current;
             if (host) void resolveLocalImages(host, filePath);
           });
+
+          setPhase('ready');
+
+          // 如果在 editor 就绪前有 [source] effect 尝试更新内容但被跳过，
+          // 这里补偿应用缓存的内容
+          const pending = pendingSourceRef.current;
+          if (pending !== null) {
+            pendingSourceRef.current = null;
+            const currentValue = editor.getValue();
+            if (currentValue !== pending) {
+              applyingExternalValue.current = true;
+              lastComplexBlocksRef.current = classifyHtmlTableBlocks(pending).complex;
+              editor.setValue(pending, true);
+              window.requestAnimationFrame(() => {
+                applyingExternalValue.current = false;
+                lockComplexTables();
+              });
+            }
+          }
         },
         input(value) {
           if (applyingExternalValue.current) return;
@@ -228,6 +257,11 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
       });
 
       editorRef.current = editor;
+    }).catch((error) => {
+      console.error('[Folia] Vditor 初始化失败:', error);
+      if (!cancelled) {
+        setPhase('error');
+      }
     });
 
     return () => {
@@ -239,12 +273,17 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
       editorRef.current?.destroy();
       editorRef.current = null;
       lastComplexBlocksRef.current = [];
+      pendingSourceRef.current = null;
     };
   }, [filePath, lockComplexTables, onChange]);
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) return;
+    if (!editor) {
+      // Editor 尚未就绪，缓存内容等 after() 回调中补偿应用
+      pendingSourceRef.current = source;
+      return;
+    }
 
     const currentValue = editor.getValue();
     if (currentValue === source) return;
@@ -325,8 +364,26 @@ export function WysiwygEditorPane({ source, onChange, onViewComplexTable, filePa
     };
   }, [onViewComplexTable, source, t]);
 
+  // 错误状态：显示可见的错误信息和重试按钮
+  if (phase === 'error') {
+    return (
+      <div className="wysiwyg-editor-pane wysiwyg-editor-pane--error">
+        <div className="wysiwyg-editor-error">
+          <p>{t('editorInitFailed')}</p>
+          <button
+            type="button"
+            className="settings-action-button"
+            onClick={() => setPhase('loading')}
+          >
+            {t('retryLabel')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="wysiwyg-editor-pane" aria-label="即时渲染编辑器">
+    <div className="wysiwyg-editor-pane" aria-label={t('editorAriaLabel')}>
       <div ref={hostRef} className="wysiwyg-editor-host" />
     </div>
   );
